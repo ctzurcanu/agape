@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkagape=self.webpackChunkagape||[]).push([[1903],{1912:a=>{a.exports=JSON.parse('{"blogBasePath":"/agape/blog","blogTitle":"Blog","authorsListPath":"/agape/blog/authors"}')}}]);
