@@ -43,22 +43,17 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/ctzurcanu/agape/tree/main/',
+          path: 'docs',
+          routeBasePath: '/',
         },
-        blog: {
+        blog: { // Re-adding blog configuration
           showReadingTime: true,
           feedOptions: {
             type: ['rss', 'atom'],
             xslt: true,
           },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
           editUrl:
             'https://github.com/ctzurcanu/agape/tree/main/',
-          // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
           onUntruncatedBlogPosts: 'warn',
@@ -82,23 +77,25 @@ const config: Config = {
       items: [
         {
           type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
+          sidebarId: 'youtubeContentSidebar',
           position: 'left',
-          label: 'Tutorial',
+          label: 'Content',
         },
         {to: '/blog', label: 'Blog', position: 'left'},
-        
       ],
-    },
     footer: {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
+          title: 'Content',
           items: [
             {
-              label: 'Tutorial',
-              to: '/docs/intro',
+              label: 'YouTube Content',
+              to: '/youtube-content/category/el-zorab',
+            },
+            {
+              label: 'Blog',
+              to: '/blog',
             },
           ],
         },
@@ -123,19 +120,12 @@ const config: Config = {
           title: 'More',
           items: [
             {
-              label: 'Blog',
-              to: '/blog',
-            },
-            {
               label: 'GitHub',
-              href: 'https://github.com/facebook/docusaurus',
+              href: 'https://github.com/ctzurcanu/agape',
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} The Agape Project. Built with Docusaurus.`,
-    },
-    prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
     },

@@ -1,0 +1,20 @@
+---
+id: QujoNx7DW8Y
+title: Joan of Arc, Supermaid P1
+sidebar_label: Joan of Arc, Supermaid P1
+---
+
+<iframe
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/QujoNx7DW8Y"
+  title="YouTube video player"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+  referrerpolicy="strict-origin-when-cross-origin"
+  allowfullscreen
+></iframe>
+
+## Description
+
+No description available.

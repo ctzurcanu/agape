@@ -1,0 +1,58 @@
+---
+id: H160m9QL2a0
+title: Lan - Man
+sidebar_label: Lan - Man
+---
+
+<iframe
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/H160m9QL2a0"
+  title="YouTube video player"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+  referrerpolicy="strict-origin-when-cross-origin"
+  allowfullscreen
+></iframe>
+
+## Description
+
+Lyrics: Mabel Matiz
+
+Bana sen gerek, şu küslüğü bırak
+Gel konuşalım ordan burdan
+Bahçemin deli, ey yaman gülü
+Feda uğruna, yansın bu orman
+
+Sana ben ezelden geldim, lan
+Bi' çağır hele bak, bu yerde durmam
+O kara göze, kaşa ben ki kurban
+Taşıyor umudum aşkımdan
+
+Sana ben ezelden yandım, lan
+Bi' çağır hele, daha bu yerde durmam
+O kara göze, kaşa ben ki kurban
+Taşıyor umudum aşkımdan
+
+Söylemiyorum
+Çok özledim ama
+Hasretin ağır
+Gel de kurtar
+Ben inanırım
+Bu aşk bize umar
+Kimse edemez onu tahtından
+
+Sana ben ezelden geldim, lan
+Bi' çağır hele bak, bu yerde durmam
+O kara göze, kaşa ben ki kurban
+Taşıyor umudum aşkımdan
+
+Geçmişin yükü şimdi toz duman
+Bembeyaz defterim, her sayfam
+Sen benim alın yazımsın, tamam
+Silmeye ne mecal ne derman
+
+Sana ben ezelden geldim, lan
+Bi' çağır hele bak, bu yerde durmam
+O kara göze, kaşa ben ki kurban
+Taşıyor umudum aşkımdan
