@@ -16,7 +16,7 @@ This is the landing page for the playlist "Eroina Martiră pentru Adevăr. Act 1
 - [Scena 3](XfYmaIJRKpE.md)
 - [Scena 4](wwL6LuIPqaU.md)
 - [Scena 5](plZIuxwYb-Y.md)
-- [Scena 6](_IGRgvvaPu0.md)
+- [Scena 6](IGRgvvaPu0.md)
 - [Scena 7](0U2xnXpsNhk.md)
 - [Scena 8](TJwANxNDTvw.md)
 - [Scena 9](Wv0DWmhWL6I.md)

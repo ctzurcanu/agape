@@ -33,7 +33,7 @@ This is the landing page for the playlist "Bohaterska Męczennica za Prawdę. Ak
 - [Scena 20](07DfFH6yUIo.md)
 - [Scena 21](AQS-fV3jXLQ.md)
 - [Scena 22](ZJIWwJ9yf70.md)
-- [Scena 23](_nd3jcGhiJ0.md)
+- [Scena 23](nd3jcGhiJ0.md)
 - [Scena 24](Gx7VOhvsl0o.md)
 - [Scena 25](gusZQOcVOdY.md)
 - [Scena 27](cGoaByXv1yo.md)

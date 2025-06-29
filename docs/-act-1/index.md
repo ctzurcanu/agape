@@ -10,7 +10,7 @@ This is the landing page for the playlist "Η Ηρωική Μάρτυς για �
 
 ## Videos in this Playlist
 
-- [Πρόλογος](_bRCQHUI4ME.md)
+- [Πρόλογος](bRCQHUI4ME.md)
 - [Σκηνή 1](VJBL8QMNR_0.md)
 - [Σκηνή 2](iaBIF5m_eRo.md)
 - [Σκηνή 3](76HFP-RT7zU.md)

@@ -73,7 +73,7 @@ This is the landing page for the playlist "French".
 - [Mon frère - My Brother](-SKrf2oFN6M.md)
 - [Hexagone 01 - Hexagone (France) 01](LUuh_DrrCZ8.md)
 - [22 - Fouquier-Tinville](QHFuevrenY0.md)
-- [Le Temps Des Cathédrales - The Time of Cathedrals](_oRGOmcsCsQ.md)
+- [Le Temps Des Cathédrales - The Time of Cathédrals](oRGOmcsCsQ.md)
 - [Hymne à l'amour - Hymn to Love](fZvvAxR9cvw.md)
 - [Veillons au salut de l'Empire - Let us watch over the salvation of the Empire](EWOfre012BA.md)
 - [Veillons au salut de l'Empire - Let us watch over the salvation of the Empire](qBo8fFanOxE.md)

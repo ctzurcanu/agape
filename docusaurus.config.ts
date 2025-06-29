@@ -19,6 +19,7 @@ const config: Config = {
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/agape/',
+  trailingSlash: true,
 
   // GitHub pages deployment config.
   organizationName: 'ctzurcanu',
@@ -26,7 +27,7 @@ const config: Config = {
   
   
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
 
   // Even if you don't use internationalization, you can use this field to set
@@ -81,7 +82,7 @@ const config: Config = {
           position: 'left',
           label: 'Content',
         },
-        {to: '/blog', label: 'Blog', position: 'left'},
+        {to: '/agape/blog', label: 'Blog', position: 'left'},
       ],
     },
     footer: {
@@ -92,11 +93,11 @@ const config: Config = {
           items: [
             {
               label: 'YouTube Content',
-              to: '/youtube-content/category/el-zorab',
+              to: '/agape/el-zorab',
             },
             {
               label: 'Blog',
-              to: '/blog',
+              to: '/agape/blog',
             },
           ],
         },

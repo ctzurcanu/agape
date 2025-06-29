@@ -26,7 +26,9 @@ function slugify(name) {
     return name.toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '') // Remove non-alphanumeric characters except spaces and hyphens
         .replace(/\s+/g, '-') // Replace spaces with hyphens
-        .replace(/-+/g, '-'); // Replace multiple hyphens with a single hyphen
+        .replace(/-+/g, '-') // Replace multiple hyphens with a single hyphen
+        .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+        .replace(/^_/, ''); // Remove leading underscores
 }
 
 async function scrapeYouTubeChannel(maxVideos = Infinity) {
@@ -124,8 +126,8 @@ ${videoDescription}
             }
 
             processedVideos.forEach(v => {
-                videoListMarkdown += `- [${v.title}](/${v.playlistSlug}/${v.videoId})
-            });
+                videoListMarkdown += `- [${v.title}](/agape/${v.playlistSlug}/${v.videoId})
+`;
 
             const playlistIndexContent = `---
 id: ${playlist.id}

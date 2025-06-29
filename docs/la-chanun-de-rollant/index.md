@@ -23,7 +23,7 @@ This is the landing page for the playlist "La Chançun de Rollant".
 - [La Chançun de Rollant 9](ze1l9uKH4jA.md)
 - [La Chançun de Rollant 10](S6nHxZ129-0.md)
 - [La Chançun de Rollant 11](5bBR-oZQYSc.md)
-- [La Chançun de Rollant 12](_NlRq_VJCHA.md)
+- [La Chançun de Rollant 12](NlRq_VJCHA.md)
 - [La Chançun de Rollant 13](EuaKqicVS-k.md)
 - [La Chançun de Rollant 14](VI0g2vgUv-g.md)
 - [La Chançun de Rollant 15](vZqMz2ywlIM.md)

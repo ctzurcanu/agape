@@ -10,7 +10,7 @@ This is the landing page for the playlist "Christian".
 
 ## Videos in this Playlist
 
-- [Inno Cavalieri Templari](ZBjD8tf0mkk.md)
+- [Inno Cavalieri Templari](/agape/christian/ZBjD8tf0mkk)
 - [The Tyger](pqaeY75uveI.md)
 - [Dies Iræ - The Day Of Wrath](xgeBxGOxkWY.md)
 - [It Will Be Worth It All](BRAIRA7U23k.md)
@@ -101,9 +101,9 @@ This is the landing page for the playlist "Christian".
 - [Ditié de Jehanne d'Arc 01 v2](aWkATOK4vbo.md)
 - [Ce se întâmplă?](GcyUa7s89u8.md)
 - [Alas! and did my Savior bleed](LOrvd0x2cNE.md)
-- [O, Isuse Milostive - O, Merciful Jesus](_Je140kJ5Lg.md)
+- [O, Isuse Milostive - O, Merciful Jesus](Je140kJ5Lg.md)
 - [Glasul Păstorului celui Bun - The Voice of the Good Shepherd](5IzLIVh-9nc.md)
-- [Caiafa - Caiaphas](_8-790muoWw.md)
+- [Caiafa - Caiaphas](8-790muoWw.md)
 - [Jesus Christ, Superstar v3: Act 1: Strange Thing Mystifying](kdOnWMBXhUY.md)
 - [Jesus Christ, Superstar v3: Act 1: Then We Are Decided](wganYZOaVDw.md)
 - [Blândul Păstor - The Gentle Shepherd](H3a_iKvJTLk.md)
@@ -118,6 +118,6 @@ This is the landing page for the playlist "Christian".
 - [Giulgiul Gol - The Empty Shroud](3dWoatMR2LM.md)
 - [Jesus Christ, Superstar v3: Act 2: The Crucifixion](KYeooJvfjwk.md)
 - [Jesus Christ, Superstar v3: Act 1: Overture](lHjNRgMjdIM.md)
-- [Jesus Christ, Superstar v3: Act 2: Trial Before Pilate](jqqoQgglEUc.md)
-- [Joan’s Light](R6oz7yTRVdU.md)
+- [Jesus Christ, Superstar v3: Act 2: Trial Before Pilate](/agape/christian/jqqoQgglEUc)
+- [Joan’s Light](/agape/christian/R6oz7yTRVdU)
 

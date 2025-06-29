@@ -22,7 +22,7 @@ This is the landing page for the playlist "Spanish".
 - [Desde mi pequeña vida - From my little life](WvqUXBXFwrw.md)
 - [La Vaca Estudiosa - The Studious Cow](MGixP55pdgg.md)
 - [La plaza tiene una torre - The square has a tower](P4cRCRq2ybg.md)
-- [El patio de mi casa - The patio of my house](_uE6U5u_Apc.md)
+- [El patio de mi casa - The patio of my house](uE6U5u_Apc.md)
 - [Nada mejor - Nothing better](O1g5S7_592g.md)
 - [Versos a la luna - Verses to the moon](grm7uRfnV94.md)
 - [Viento, agua, piedra - Wind, Water, Stone](4oIL1pTSnrA.md)
@@ -31,5 +31,5 @@ This is the landing page for the playlist "Spanish".
 - [Oda al Tomate - Ode to Tomato](N5Q6nmvVOoE.md)
 - [La merienda - The Snack](Jm0LCRowXVg.md)
 - [Marcha Real - The Royal March](ytb8VNmLZm0.md)
-- [Cielito lindo](-e2JLjzfkyM.md)
+- [Cielito lindo](/agape/spanish/-e2JLjzfkyM)
 

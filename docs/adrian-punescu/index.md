@@ -12,7 +12,7 @@ This is the landing page for the playlist "Adrian Păunescu".
 
 - [Nebun de Alb - White Bishop](JY7Kcj6AvD4.md)
 - [Marşul Ardealului - The Transylvanian Song](20dEpWunk6Y.md)
-- [Actorul - The Actor](_BpyxXSM9-g.md)
+- [Actorul - The Actor](BpyxXSM9-g.md)
 - [Colindul colindelor - The Carol of Carols](n1UdNovpOGU.md)
 - [Charlie Chaplin](mP5E8pS7cac.md)
 - [Bătrân Ceasornicar - Old Watchmaker](KVwYvB6FF4o.md)
@@ -22,5 +22,5 @@ This is the landing page for the playlist "Adrian Păunescu".
 - [Impozite, Biruri şi Taxe - Taxes, Duties and Fees](TZ5du8sNUs0.md)
 - [Dacii liberi v2 - Free Dacians v2](QbZafsSnvYg.md)
 - [Bieți Lampagii - Poor lamplighters](UVdnp93UL6k.md)
-- [Dor de Eminescu - Longing for Eminescu](nimgbtmg5nk.md)
+- [Dor de Eminescu - Longing for Eminescu](/agape/adrian-punescu/nimgbtmg5nk)
 
