@@ -5,6 +5,12 @@
  */
 
 /* You can override the default Infima variables here. */
+body {
+  background-image: url('/img/seamless-music.png');
+  background-repeat: repeat;
+  background-size: 10% auto;
+}
+
 :root {
   --ifm-color-primary: #2e8555;
   --ifm-color-primary-dark: #29784c;
@@ -27,4 +33,32 @@
   --ifm-color-primary-lighter: #32d8b4;
   --ifm-color-primary-lightest: #4fddbf;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+.video-float-container {
+  position: fixed; /* Use fixed positioning */
+  top: calc(var(--ifm-navbar-height) + 20px); /* Position below navbar with some margin */
+  right: 20px; /* Position from the right edge */
+  width: 560px; /* Match iframe width */
+  z-index: 100; /* Ensure it stays on top */
+}
+
+/* Adjust the main content area to make space for the fixed video */
+/* This might need to be adjusted based on Docusaurus's actual layout classes */
+.docItemCol {
+  padding-right: calc(560px + 40px); /* Video width + right margin + some extra space */
+}
+
+/* For smaller screens, disable fixed positioning and adjust layout */
+@media (max-width: 996px) { /* Docusaurus default breakpoint for sidebar */
+  .video-float-container {
+    position: static; /* Disable fixed positioning */
+    width: 100%;
+    margin: 0 auto; /* Center the video */
+    right: auto; /* Reset right property */
+    top: auto; /* Reset top property */
+  }
+  .docItemCol {
+    padding-right: 0; /* Remove padding on smaller screens */
+  }
 }

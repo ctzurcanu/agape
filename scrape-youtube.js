@@ -1,4 +1,3 @@
-
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -23,11 +22,15 @@ async function runCommand(command) {
     });
 }
 
-function sanitizeFilename(name) {
-    return name.replace(/[^a-z0-9-]/gi, '_').toLowerCase();
+function slugify(name) {
+    return name.toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '') // Remove non-alphanumeric characters except spaces and hyphens
+        .replace(/\s+/g, '-') // Replace spaces with hyphens
+        .replace(/-+/g, '-'); // Replace multiple hyphens with a single hyphen
 }
 
-async function scrapeYouTubeChannel() {
+async function scrapeYouTubeChannel(maxVideos = Infinity) {
+    let videoCount = 0;
     console.log(`Scraping playlists from channel: ${CHANNEL_URL}`);
 
     // Create base directory if it doesn't exist
@@ -41,12 +44,13 @@ async function scrapeYouTubeChannel() {
         const playlists = playlistsJson.split('\n').filter(Boolean).map(JSON.parse);
 
         for (const playlist of playlists) {
+
             if (!playlist.id || !playlist.title) {
                 console.warn('Skipping invalid playlist entry:', playlist);
                 continue;
             }
 
-            const playlistDirName = sanitizeFilename(playlist.title);
+            const playlistDirName = slugify(playlist.title);
             const playlistDirPath = path.join(DOCS_BASE_PATH, playlistDirName);
 
             console.log(`Processing playlist: ${playlist.title} (${playlist.id})`);
@@ -59,13 +63,16 @@ async function scrapeYouTubeChannel() {
             const videosJson = await runCommand(`yt-dlp --flat-playlist --dump-json --print-json "${playlist.url}"`);
             const videos = videosJson.split('\n').filter(Boolean).map(JSON.parse);
 
+            let videoListMarkdown = '## Videos in this Playlist\n\n';
+            const processedVideos = [];
+
             for (const video of videos) {
-                if (!video.id || !video.title) {
-                    console.warn('Skipping invalid video entry in playlist:', video);
-                    continue;
+                if (videoCount >= maxVideos) {
+                    console.log(`Reached video limit of ${maxVideos}. Stopping.`);
+                    break; // Exit video loop
                 }
 
-                const videoFileName = sanitizeFilename(video.title) + '.md';
+                const videoFileName = video.id + '.md';
                 const videoFilePath = path.join(playlistDirPath, videoFileName);
 
                 console.log(`  Processing video: ${video.title} (${video.id})`);
@@ -80,33 +87,61 @@ async function scrapeYouTubeChannel() {
                     fullVideoInfo = video; // Fallback to basic info if full fetch fails
                 }
 
-                const videoDescription = fullVideoInfo.description || 'No description available.';
+                const videoDescription = (fullVideoInfo.description || 'No description available.')
+                    .replace(/\n\n/g, '[DOUBLE_NEWLINE_PLACEHOLDER]') // Temporarily replace double newlines
+                    .replace(/\n/g, '  \n') // Replace single newlines with markdown line breaks
+                    .replace(/\[DOUBLE_NEWLINE_PLACEHOLDER\]/g, '\n\n'); // Restore double newlines
                 const videoEmbedUrl = `https://www.youtube.com/embed/${video.id}`;
 
                 const markdownContent = `---
 id: ${video.id}
-title: ${fullVideoInfo.title || video.title}
-sidebar_label: ${fullVideoInfo.title || video.title}
+title: "${fullVideoInfo.title || video.title}"
+sidebar_label: "${fullVideoInfo.title || video.title}"
 ---
 
-<iframe
-  width="560"
-  height="315"
-  src="${videoEmbedUrl}"
-  title="YouTube video player"
-  frameborder="0"
-  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-  referrerpolicy="strict-origin-when-cross-origin"
-  allowfullscreen
-></iframe>
+<div class="video-float-container">
+  <iframe
+    width="560"
+    height="315"
+    src="${videoEmbedUrl}"
+    title="YouTube video player"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    referrerpolicy="strict-origin-when-cross-origin"
+    allowfullscreen
+  ></iframe>
+</div>
 
-## Description
+## ${fullVideoInfo.title || video.title}
 
 ${videoDescription}
 `;
 
                 fs.writeFileSync(videoFilePath, markdownContent);
                 console.log(`    Generated: ${videoFilePath}`);
+                processedVideos.push({ title: fullVideoInfo.title || video.title, playlistSlug: playlistDirName, videoId: video.id });
+                videoCount++;
+            }
+
+            processedVideos.forEach(v => {
+                videoListMarkdown += `- [${v.title}](/${v.playlistSlug}/${v.videoId})
+            });
+
+            const playlistIndexContent = `---
+id: ${playlist.id}
+title: "${playlist.title}"
+sidebar_label: "${playlist.title}"
+---
+
+# ${playlist.title}
+
+This is the landing page for the playlist "${playlist.title}".
+
+${videoListMarkdown}
+`;
+            fs.writeFileSync(path.join(playlistDirPath, 'index.md'), playlistIndexContent);
+            if (videoCount >= maxVideos) {
+                break; // Exit playlist loop if overall video limit is reached
             }
         }
         console.log('Scraping complete!');
@@ -115,4 +150,5 @@ ${videoDescription}
     }
 }
 
-scrapeYouTubeChannel();
+const n = process.argv[2] ? parseInt(process.argv[2], 10) : Infinity;
+scrapeYouTubeChannel(n);

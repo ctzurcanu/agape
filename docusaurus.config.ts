@@ -83,6 +83,7 @@ const config: Config = {
         },
         {to: '/blog', label: 'Blog', position: 'left'},
       ],
+    },
     footer: {
       style: 'dark',
       links: [
@@ -126,6 +127,8 @@ const config: Config = {
           ],
         },
       ],
+    },
+    prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
     },
