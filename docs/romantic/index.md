@@ -10,7 +10,7 @@ This is the landing page for the playlist "Romantic".
 
 ## Videos in this Playlist
 
-- [Romance del Conde Olinos - The Romance of Count Olinos](ajoCTpTWmZI.md)
-- [Dès que le vent soufflera - As soon as the wind will blow](2_LLwKOppOE.md)
-- [Mistral gagnant - Winning Mistral](7BNJcmBxuCA.md)
+- [Romance del Conde Olinos - The Romance of Count Olinos](/agape/romantic/ajoCTpTWmZI)
+- [Dès que le vent soufflera - As soon as the wind will blow](/agape/romantic/2_LLwKOppOE)
+- [Mistral gagnant - Winning Mistral](/agape/romantic/7BNJcmBxuCA)
 

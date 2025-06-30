@@ -10,5 +10,5 @@ This is the landing page for the playlist "Cenaclul Flacara".
 
 ## Videos in this Playlist
 
-- [Alma Venus](ZG_tNF21Bto.md)
+- [Alma Venus](/agape/cenaclul-flacara/ZG_tNF21Bto)
 

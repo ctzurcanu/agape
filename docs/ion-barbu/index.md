@@ -10,5 +10,5 @@ This is the landing page for the playlist "Ion Barbu".
 
 ## Videos in this Playlist
 
-- [Din ceas, dedus... - From the clock, deduced...](7qJe5q4letQ.md)
+- [Din ceas, dedus... - From the clock, deduced...](/agape/ion-barbu/7qJe5q4letQ)
 

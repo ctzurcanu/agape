@@ -10,5 +10,5 @@ This is the landing page for the playlist "George Topîrceanu".
 
 ## Videos in this Playlist
 
-- [Balada unui greier mic - The Ballad of a Little Cricket](WBucp0wPTbI.md)
+- [Balada unui greier mic - The Ballad of a Little Cricket](/agape/george-toprceanu/WBucp0wPTbI)
 

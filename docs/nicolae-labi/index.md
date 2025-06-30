@@ -10,5 +10,5 @@ This is the landing page for the playlist "Nicolae Labiş".
 
 ## Videos in this Playlist
 
-- [Noi, nu! - Not us!](p0AHtyV4MnI.md)
+- [Noi, nu! - Not us!](/agape/nicolae-labi/p0AHtyV4MnI)
 

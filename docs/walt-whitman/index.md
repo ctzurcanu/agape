@@ -10,5 +10,5 @@ This is the landing page for the playlist "Walt Whitman".
 
 ## Videos in this Playlist
 
-- [O Captain! My Captain!](Xwy7Ihr0k4k.md)
+- [O Captain! My Captain!](/agape/walt-whitman/Xwy7Ihr0k4k)
 

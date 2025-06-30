@@ -10,6 +10,6 @@ This is the landing page for the playlist "Vasile Voiculescu".
 
 ## Videos in this Playlist
 
-- [Sonet CLXX](9QZJ_DAYAEU.md)
-- [În Grădina Ghetsimani - In the Garden of Gethsemane](AQYdwiWtllY.md)
+- [Sonet CLXX](/agape/vasile-voiculescu/9QZJ_DAYAEU)
+- [În Grădina Ghetsimani - In the Garden of Gethsemane](/agape/vasile-voiculescu/AQYdwiWtllY)
 

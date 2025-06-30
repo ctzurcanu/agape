@@ -10,6 +10,6 @@ This is the landing page for the playlist "Hildebrandslied".
 
 ## Videos in this Playlist
 
-- [Hildebrandslied 01](PwM8D6WjuDE.md)
-- [Hildebrandslied 02](OrHAturQqj8.md)
+- [Hildebrandslied 01](/agape/hildebrandslied/PwM8D6WjuDE)
+- [Hildebrandslied 02](/agape/hildebrandslied/OrHAturQqj8)
 

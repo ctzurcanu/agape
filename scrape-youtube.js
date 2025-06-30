@@ -4,6 +4,29 @@ const path = require('path');
 
 const CHANNEL_URL = 'https://www.youtube.com/channel/UC5VMvbqSMoqGs0nFeESrf5g';
 const DOCS_BASE_PATH = path.join(__dirname, 'docs');
+const CACHE_FILE_PATH = path.join(__dirname, 'scrape-cache.json');
+
+function loadCache() {
+    if (fs.existsSync(CACHE_FILE_PATH)) {
+        try {
+            const cacheData = fs.readFileSync(CACHE_FILE_PATH, 'utf8');
+            return new Set(JSON.parse(cacheData));
+        } catch (e) {
+            console.warn(`Could not read or parse cache file '${CACHE_FILE_PATH}'. Starting with an empty cache.`, e);
+            return new Set();
+        }
+    }
+    return new Set();
+}
+
+function saveCache(cache) {
+    try {
+        fs.writeFileSync(CACHE_FILE_PATH, JSON.stringify(Array.from(cache)), 'utf8');
+        console.log(`Cache with ${cache.size} video IDs saved to ${CACHE_FILE_PATH}`);
+    } catch (e) {
+        console.error(`Failed to save cache to '${CACHE_FILE_PATH}'.`, e);
+    }
+}
 
 async function runCommand(command) {
     return new Promise((resolve, reject) => {
@@ -31,8 +54,16 @@ function slugify(name) {
         .replace(/^_/, ''); // Remove leading underscores
 }
 
+function escapeDoubleQuotes(text) {
+    return text.replace(/"/g, '\"');
+}
+
 async function scrapeYouTubeChannel(maxVideos = Infinity) {
+
+    const processedVideoIds = loadCache();
+    console.log(`Loaded ${processedVideoIds.size} video IDs from cache.`);
     let videoCount = 0;
+
     console.log(`Scraping playlists from channel: ${CHANNEL_URL}`);
 
     // Create base directory if it doesn't exist
@@ -66,7 +97,7 @@ async function scrapeYouTubeChannel(maxVideos = Infinity) {
             const videos = videosJson.split('\n').filter(Boolean).map(JSON.parse);
 
             let videoListMarkdown = '## Videos in this Playlist\n\n';
-            const processedVideos = [];
+            const processedVideosForPlaylist = [];
 
             for (const video of videos) {
                 if (videoCount >= maxVideos) {
@@ -74,31 +105,37 @@ async function scrapeYouTubeChannel(maxVideos = Infinity) {
                     break; // Exit video loop
                 }
 
-                const videoFileName = video.id + '.md';
-                const videoFilePath = path.join(playlistDirPath, videoFileName);
+                let videoTitle = video.title; // Use playlist video title by default
 
-                console.log(`  Processing video: ${video.title} (${video.id})`);
-
-                // Fetch full video info for description
+                // Fetch full video info for description (always, to get accurate title for index.md)
                 let fullVideoInfo;
                 try {
                     const videoInfoJson = await runCommand(`yt-dlp --dump-json --print-json "https://www.youtube.com/watch?v=${video.id}"`);
                     fullVideoInfo = JSON.parse(videoInfoJson.split('\n').filter(Boolean)[0]);
+                    videoTitle = fullVideoInfo.title || video.title; // Update title with more accurate one
                 } catch (infoError) {
                     console.error(`    Could not fetch full info for video ${video.id}: ${infoError.message}. Using basic info.`);
                     fullVideoInfo = video; // Fallback to basic info if full fetch fails
                 }
 
-                const videoDescription = (fullVideoInfo.description || 'No description available.')
-                    .replace(/\n\n/g, '[DOUBLE_NEWLINE_PLACEHOLDER]') // Temporarily replace double newlines
-                    .replace(/\n/g, '  \n') // Replace single newlines with markdown line breaks
-                    .replace(/\[DOUBLE_NEWLINE_PLACEHOLDER\]/g, '\n\n'); // Restore double newlines
-                const videoEmbedUrl = `https://www.youtube.com/embed/${video.id}`;
+                const fileSafeVideoId = video.id.startsWith('_') ? video.id.substring(1) : video.id;
 
-                const markdownContent = `---
+                if (processedVideoIds.has(video.id)) {
+                    console.log(`    Skipping already processed video: ${videoTitle} (${video.id})`);
+                } else {
+                    console.log(`  Processing new video: ${videoTitle} (${video.id})`);
+
+                    const videoDescription = (fullVideoInfo.description || 'No description available.')
+                        .replace(/\n\n/g, '[DOUBLE_NEWLINE_PLACEHOLDER]') // Temporarily replace double newlines
+                        .replace(/\n/g, '  \n') // Replace single newlines with markdown line breaks
+                        .replace(/\[DOUBLE_NEWLINE_PLACEHOLDER\]/g, '\n\n'); // Restore double newlines
+                    const videoEmbedUrl = `https://www.youtube.com/embed/${video.id}`;
+                    const videoFilePath = path.join(playlistDirPath, fileSafeVideoId + '.md');
+
+                    const markdownContent = `---
 id: ${video.id}
-title: "${fullVideoInfo.title || video.title}"
-sidebar_label: "${fullVideoInfo.title || video.title}"
+title: "${escapeDoubleQuotes(videoTitle)}"
+sidebar_label: "${escapeDoubleQuotes(videoTitle)}"
 ---
 
 <div class="video-float-container">
@@ -114,20 +151,23 @@ sidebar_label: "${fullVideoInfo.title || video.title}"
   ></iframe>
 </div>
 
-## ${fullVideoInfo.title || video.title}
+## ${videoTitle}
 
 ${videoDescription}
 `;
 
-                fs.writeFileSync(videoFilePath, markdownContent);
-                console.log(`    Generated: ${videoFilePath}`);
-                processedVideos.push({ title: fullVideoInfo.title || video.title, playlistSlug: playlistDirName, videoId: video.id });
+                    fs.writeFileSync(videoFilePath, markdownContent);
+                    console.log(`    Generated: ${videoFilePath}`);
+                    processedVideoIds.add(video.id); // Add to cache after successful processing
+                }
+
+                processedVideosForPlaylist.push({ title: videoTitle, playlistSlug: playlistDirName, videoId: fileSafeVideoId });
                 videoCount++;
             }
 
-            processedVideos.forEach(v => {
-                videoListMarkdown += `- [${v.title}](/agape/${v.playlistSlug}/${v.videoId})
-`;
+            processedVideosForPlaylist.forEach(v => {
+                videoListMarkdown += `- [${v.title}](/agape/${v.playlistSlug}/${v.videoId})\n`;
+            });
 
             const playlistIndexContent = `---
 id: ${playlist.id}
@@ -142,14 +182,18 @@ This is the landing page for the playlist "${playlist.title}".
 ${videoListMarkdown}
 `;
             fs.writeFileSync(path.join(playlistDirPath, 'index.md'), playlistIndexContent);
+            console.log(`  Updated playlist index: ${playlist.title}`);
+
             if (videoCount >= maxVideos) {
                 break; // Exit playlist loop if overall video limit is reached
             }
         }
-        console.log('Scraping complete!');
     } catch (error) {
         console.error('An error occurred during scraping:', error);
+    } finally {
+        saveCache(processedVideoIds);
     }
+    console.log('Scraping complete!');
 }
 
 const n = process.argv[2] ? parseInt(process.argv[2], 10) : Infinity;

@@ -10,5 +10,5 @@ This is the landing page for the playlist "Otilia Cazimir".
 
 ## Videos in this Playlist
 
-- [Pentru tine, Primăvară - For you, Spring](v_xAjXULLK8.md)
+- [Pentru tine, Primăvară - For you, Spring](/agape/otilia-cazimir/v_xAjXULLK8)
 

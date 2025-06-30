@@ -10,5 +10,5 @@ This is the landing page for the playlist "Martin Luther".
 
 ## Videos in this Playlist
 
-- [A Mighty Fortress is Our God](e_yRDmABrWw.md)
+- [A Mighty Fortress is Our God](/agape/martin-luther/e_yRDmABrWw)
 

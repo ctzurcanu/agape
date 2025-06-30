@@ -10,5 +10,5 @@ This is the landing page for the playlist "Grigore Alexandrescu".
 
 ## Videos in this Playlist
 
-- [Boul şi viţelul - The ox and the calf](QNaG6nL56r0.md)
+- [Boul şi viţelul - The ox and the calf](/agape/grigore-alexandrescu/QNaG6nL56r0)
 

@@ -10,6 +10,6 @@ This is the landing page for the playlist "Polish".
 
 ## Videos in this Playlist
 
-- [Marsz Obozowy  - Camp March](8mWxuKpdGfU.md)
-- [Rota - The Oath](E5zqzwJMo18.md)
+- [Marsz Obozowy  - Camp March](/agape/polish/8mWxuKpdGfU)
+- [Rota - The Oath](/agape/polish/E5zqzwJMo18)
 

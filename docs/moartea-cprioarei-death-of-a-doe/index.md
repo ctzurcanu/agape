@@ -10,6 +10,6 @@ This is the landing page for the playlist "Moartea căprioarei - Death of a Doe"
 
 ## Videos in this Playlist
 
-- [Moartea căprioarei. Pânda - Death of a Doe. The Wait](xV8wBRg-S58.md)
-- [Moartea căprioarei. Puşcarea - Death of a Doe. The Shot](YCm4tJHslLA.md)
+- [Moartea căprioarei. Pânda - Death of a Doe. The Wait](/agape/moartea-cprioarei-death-of-a-doe/xV8wBRg-S58)
+- [Moartea căprioarei. Puşcarea - Death of a Doe. The Shot](/agape/moartea-cprioarei-death-of-a-doe/YCm4tJHslLA)
 

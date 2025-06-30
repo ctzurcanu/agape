@@ -10,5 +10,5 @@ This is the landing page for the playlist "George Bacovia".
 
 ## Videos in this Playlist
 
-- [Decembre - December](2vvvqdypw3c.md)
+- [Decembre - December](/agape/george-bacovia/2vvvqdypw3c)
 

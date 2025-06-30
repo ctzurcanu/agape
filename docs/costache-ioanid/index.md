@@ -10,11 +10,11 @@ This is the landing page for the playlist "Costache Ioanid".
 
 ## Videos in this Playlist
 
-- [Biruinţa - Victory](llavtzhssUc.md)
-- [Piatra pecetluită - The Sealed Stone](F22WTzrDLpY.md)
-- [Ecce homo!](lLPTSwUiOaI.md)
-- [Doi îngeri - Two Angels](52DTG74a7dk.md)
-- [Caiafa - Caiaphas](8-790muoWw.md)
-- [Dar sus la Golgota... - But on Golgotha...](Z5ewmb-RnoE.md)
+- [Biruinţa - Victory](/agape/costache-ioanid/llavtzhssUc)
+- [Piatra pecetluită - The Sealed Stone](/agape/costache-ioanid/F22WTzrDLpY)
+- [Ecce homo!](/agape/costache-ioanid/lLPTSwUiOaI)
+- [Doi îngeri - Two Angels](/agape/costache-ioanid/52DTG74a7dk)
+- [Caiafa - Caiaphas](/agape/costache-ioanid/8-790muoWw)
+- [Dar sus la Golgota... - But on Golgotha...](/agape/costache-ioanid/Z5ewmb-RnoE)
 - [Giulgiul Gol - The Empty Shroud](/agape/costache-ioanid/3dWoatMR2LM)
 

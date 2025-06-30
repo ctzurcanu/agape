@@ -10,6 +10,6 @@ This is the landing page for the playlist "The Lady of Shalott".
 
 ## Videos in this Playlist
 
-- [The Lady of Shalott 1](ImIesBfPjqs.md)
-- [The Lady of Shalott 2](MwwmsmTXOSk.md)
+- [The Lady of Shalott 1](/agape/the-lady-of-shalott/ImIesBfPjqs)
+- [The Lady of Shalott 2](/agape/the-lady-of-shalott/MwwmsmTXOSk)
 

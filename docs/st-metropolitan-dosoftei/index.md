@@ -10,16 +10,16 @@ This is the landing page for the playlist "St. Metropolitan Dosoftei".
 
 ## Videos in this Playlist
 
-- [Psalmul 10 - Psalm 10](NtMoqmQh8Rc.md)
-- [Psalmul 50 - Psalm 50](kMTFFUOyL6s.md)
-- [Psalmul 31 - Psalm 31](IgYYJTzGKfw.md)
-- [Psalmul 14 - Psalm 14](JDL6CvZcRLk.md)
-- [Psalmul 119 - Psalm 119](jmgv6y788Pk.md)
-- [Psalmul 75 - Psalm 75](9R5Ju008v9I.md)
-- [Psalmul 99 - Psalm 99](C2MNy2G_2Uk.md)
-- [Psalmul 64 - Psalm 64](knb7EPMtlFs.md)
-- [Psalmul 74 - Psalm 74](Y-zyUvUa4Kc.md)
-- [Psalmul 42 - Psalm 42](lZ0bJYiwKvQ.md)
-- [Psalmul 11 - Psalm 11](MktHIvU1Zqk.md)
-- [Psalmul 110 - Psalm 110](CZj_0zb4gs8.md)
+- [Psalmul 10 - Psalm 10](/agape/st-metropolitan-dosoftei/NtMoqmQh8Rc)
+- [Psalmul 50 - Psalm 50](/agape/st-metropolitan-dosoftei/kMTFFUOyL6s)
+- [Psalmul 31 - Psalm 31](/agape/st-metropolitan-dosoftei/IgYYJTzGKfw)
+- [Psalmul 14 - Psalm 14](/agape/st-metropolitan-dosoftei/JDL6CvZcRLk)
+- [Psalmul 119 - Psalm 119](/agape/st-metropolitan-dosoftei/jmgv6y788Pk)
+- [Psalmul 75 - Psalm 75](/agape/st-metropolitan-dosoftei/9R5Ju008v9I)
+- [Psalmul 99 - Psalm 99](/agape/st-metropolitan-dosoftei/C2MNy2G_2Uk)
+- [Psalmul 64 - Psalm 64](/agape/st-metropolitan-dosoftei/knb7EPMtlFs)
+- [Psalmul 74 - Psalm 74](/agape/st-metropolitan-dosoftei/Y-zyUvUa4Kc)
+- [Psalmul 42 - Psalm 42](/agape/st-metropolitan-dosoftei/lZ0bJYiwKvQ)
+- [Psalmul 11 - Psalm 11](/agape/st-metropolitan-dosoftei/MktHIvU1Zqk)
+- [Psalmul 110 - Psalm 110](/agape/st-metropolitan-dosoftei/CZj_0zb4gs8)
 

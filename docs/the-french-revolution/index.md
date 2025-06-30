@@ -10,12 +10,12 @@ This is the landing page for the playlist "The French Revolution".
 
 ## Videos in this Playlist
 
-- [Chant du 14 juillet - July 14th Song](bG8ilbL_kYw.md)
-- [Le Capitaine « Au mur » - The Captain "To the Wall"](7V3tA_6wxeU.md)
-- [Les Litanies de Satan - The Litany of Satan](sUxtoUrqdV0.md)
-- [La Dynamite - The Dynamite](Mz0SOlBeBtU.md)
-- [Veillons au salut de l'Empire - Let us watch over the salvation of the Empire](EWOfre012BA.md)
-- [Veillons au salut de l'Empire - Let us watch over the salvation of the Empire](qBo8fFanOxE.md)
-- [Le Réveil du Peuple - The People's Awakening](1rk30KzTLPM.md)
-- [6 - Il s'appelle Charles Gauthier (Isabelle de Montmorency)](88Vj8WIN4C4.md)
+- [Chant du 14 juillet - July 14th Song](/agape/the-french-revolution/bG8ilbL_kYw)
+- [Le Capitaine « Au mur » - The Captain "To the Wall"](/agape/the-french-revolution/7V3tA_6wxeU)
+- [Les Litanies de Satan - The Litany of Satan](/agape/the-french-revolution/sUxtoUrqdV0)
+- [La Dynamite - The Dynamite](/agape/the-french-revolution/Mz0SOlBeBtU)
+- [Veillons au salut de l'Empire - Let us watch over the salvation of the Empire](/agape/the-french-revolution/EWOfre012BA)
+- [Veillons au salut de l'Empire - Let us watch over the salvation of the Empire](/agape/the-french-revolution/qBo8fFanOxE)
+- [Le Réveil du Peuple - The People's Awakening](/agape/the-french-revolution/1rk30KzTLPM)
+- [6 - Il s'appelle Charles Gauthier (Isabelle de Montmorency)](/agape/the-french-revolution/88Vj8WIN4C4)
 

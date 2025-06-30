@@ -10,7 +10,7 @@ This is the landing page for the playlist "El-Zorab".
 
 ## Videos in this Playlist
 
-- [El-Zorab (English)](5adb1hDbWQ0.md)
-- [El-Zorab (French)](m0m9G-zv2Nw.md)
-- [El-Zorab (Romanian)](4QcU2JyjuUc.md)
+- [El-Zorab (English)](/agape/el-zorab/5adb1hDbWQ0)
+- [El-Zorab (French)](/agape/el-zorab/m0m9G-zv2Nw)
+- [El-Zorab (Romanian)](/agape/el-zorab/4QcU2JyjuUc)
 

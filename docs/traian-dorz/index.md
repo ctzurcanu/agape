@@ -10,5 +10,5 @@ This is the landing page for the playlist "Traian Dorz".
 
 ## Videos in this Playlist
 
-- [Taina Crucii - The Mystery of The Cross](9bSwSZzsffs.md)
+- [Taina Crucii - The Mystery of The Cross](/agape/traian-dorz/9bSwSZzsffs)
 

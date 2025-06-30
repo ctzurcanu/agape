@@ -10,5 +10,5 @@ This is the landing page for the playlist "Pablo Neruda".
 
 ## Videos in this Playlist
 
-- [Oda al Tomate - Ode to Tomato](N5Q6nmvVOoE.md)
+- [Oda al Tomate - Ode to Tomato](/agape/pablo-neruda/N5Q6nmvVOoE)
 

@@ -10,5 +10,5 @@ This is the landing page for the playlist "Paul Verlaine".
 
 ## Videos in this Playlist
 
-- [Chanson d’automne - Autumn Song](JQZyYNVS6yQ.md)
+- [Chanson d’automne - Autumn Song](/agape/paul-verlaine/JQZyYNVS6yQ)
 

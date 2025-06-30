@@ -10,5 +10,5 @@ This is the landing page for the playlist "Biblical".
 
 ## Videos in this Playlist
 
-- [Noah](tCAOoeqiv50.md)
+- [Noah](/agape/biblical/tCAOoeqiv50)
 

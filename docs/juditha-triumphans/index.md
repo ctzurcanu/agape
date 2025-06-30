@@ -10,7 +10,7 @@ This is the landing page for the playlist "Juditha triumphans".
 
 ## Videos in this Playlist
 
-- [Juditha triumphans 1](v0eT-Zdqd_k.md)
-- [Juditha triumphans 2](-tcqNPBjMjs.md)
-- [Juditha triumphans 3](zfftvPPKRAs.md)
+- [Juditha triumphans 1](/agape/juditha-triumphans/v0eT-Zdqd_k)
+- [Juditha triumphans 2](/agape/juditha-triumphans/-tcqNPBjMjs)
+- [Juditha triumphans 3](/agape/juditha-triumphans/zfftvPPKRAs)
 

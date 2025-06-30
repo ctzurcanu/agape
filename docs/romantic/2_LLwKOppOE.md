@@ -104,7 +104,7 @@ Et mon bateau aussi
 Il est fier mon navire  
 Il est beau mon bateau  
 C'est un fameux trois mats  
-Fin comme un oiseau \{Hissez haut\}  
+Fin comme un oiseau [Hissez haut]  
 Tabarly, Pajot  
 Kersauson ou Riguidel  
 Naviguent pas sur des cageots  

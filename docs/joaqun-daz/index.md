@@ -10,5 +10,5 @@ This is the landing page for the playlist "Joaquín Díaz".
 
 ## Videos in this Playlist
 
-- [Perdona a tu pueblo, Señor - Forgive your people, Lord](QELBGByv1DU.md)
+- [Perdona a tu pueblo, Señor - Forgive your people, Lord](/agape/joaqun-daz/QELBGByv1DU)
 

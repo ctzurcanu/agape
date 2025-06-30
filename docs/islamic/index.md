@@ -10,5 +10,5 @@ This is the landing page for the playlist "Islamic".
 
 ## Videos in this Playlist
 
-- [Beautiful Names](RD9MQAdGM44.md)
+- [Beautiful Names](/agape/islamic/RD9MQAdGM44)
 

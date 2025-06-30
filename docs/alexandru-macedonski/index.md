@@ -10,6 +10,6 @@ This is the landing page for the playlist "Alexandru Macedonski".
 
 ## Videos in this Playlist
 
-- [Cântecul ploaiei - The Song of Rain](lI1cgL13ZSo.md)
-- [Pe balta clară - On the clear pond](MuT2AuM79aA.md)
+- [Cântecul ploaiei - The Song of Rain](/agape/alexandru-macedonski/lI1cgL13ZSo)
+- [Pe balta clară - On the clear pond](/agape/alexandru-macedonski/MuT2AuM79aA)
 

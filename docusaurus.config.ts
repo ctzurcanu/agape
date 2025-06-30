@@ -49,6 +49,7 @@ const config: Config = {
         },
         blog: { // Re-adding blog configuration
           showReadingTime: true,
+          authorsMapPath: 'authors.yml',
           feedOptions: {
             type: ['rss', 'atom'],
             xslt: true,
@@ -68,7 +69,7 @@ const config: Config = {
 
   themeConfig: {
     // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    image: 'img/agape_card.png',
     navbar: {
       title: 'The Agape Project',
       logo: {
@@ -77,8 +78,7 @@ const config: Config = {
       },
       items: [
         {
-          type: 'docSidebar',
-          sidebarId: 'youtubeContentSidebar',
+          to: '/agape/',
           position: 'left',
           label: 'Content',
         },
@@ -94,6 +94,10 @@ const config: Config = {
             {
               label: 'YouTube Content',
               to: '/agape/el-zorab',
+            },
+            {
+              label: 'Docs Intro',
+              to: '/agape/docs/intro/',
             },
             {
               label: 'Blog',
