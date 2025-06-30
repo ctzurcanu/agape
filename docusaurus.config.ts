@@ -58,7 +58,7 @@ const config: Config = {
             'https://github.com/ctzurcanu/agape/tree/main/',
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
-          onUntruncatedBlogPosts: 'warn',
+          onUntruncatedBlogPosts: 'ignore',
         },
         theme: {
           customCss: './src/css/custom.css',
@@ -66,6 +66,7 @@ const config: Config = {
       } satisfies Preset.Options,
     ],
   ],
+  
 
   themeConfig: {
     // Replace with your project's social card
@@ -93,35 +94,16 @@ const config: Config = {
           items: [
             {
               label: 'YouTube Content',
-              to: '/agape/el-zorab',
+              to: '/agape/',
             },
-            {
-              label: 'Docs Intro',
-              to: '/agape/docs/intro/',
-            },
+            
             {
               label: 'Blog',
               to: '/agape/blog',
             },
           ],
         },
-        {
-          title: 'Community',
-          items: [
-            {
-              label: 'Stack Overflow',
-              href: 'https://stackoverflow.com/questions/tagged/docusaurus',
-            },
-            {
-              label: 'Discord',
-              href: 'https://discordapp.com/invite/docusaurus',
-            },
-            {
-              label: 'X',
-              href: 'https://x.com/docusaurus',
-            },
-          ],
-        },
+        
         {
           title: 'More',
           items: [

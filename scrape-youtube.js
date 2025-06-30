@@ -63,6 +63,7 @@ async function scrapeYouTubeChannel(maxVideos = Infinity) {
     const processedVideoIds = loadCache();
     console.log(`Loaded ${processedVideoIds.size} video IDs from cache.`);
     let videoCount = 0;
+    let playlistPosition = 1; // Initialize playlist position counter
 
     console.log(`Scraping playlists from channel: ${CHANNEL_URL}`);
 
@@ -91,6 +92,14 @@ async function scrapeYouTubeChannel(maxVideos = Infinity) {
             if (!fs.existsSync(playlistDirPath)) {
                 fs.mkdirSync(playlistDirPath, { recursive: true });
             }
+
+            // Create _category_.json for sidebar ordering
+            const categoryJsonContent = JSON.stringify({
+                position: playlistPosition,
+                label: playlist.title,
+            }, null, 2);
+            fs.writeFileSync(path.join(playlistDirPath, '_category_.json'), categoryJsonContent);
+            playlistPosition++;
 
             // Get videos from each playlist
             const videosJson = await runCommand(`yt-dlp --flat-playlist --dump-json --print-json "${playlist.url}"`);
