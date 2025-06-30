@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkagape=self.webpackChunkagape||[]).push([[43015],{96723:u=>{u.exports=JSON.parse('{"authors":[{"name":"Christian Tzurcanu","title":"Agape Contributor","url":"https://www.youtube.com/@ChristianTzurcanu","imageURL":"https://github.com/ctzurcanu.png","key":"ctzurcanu","page":null,"count":1}]}')}}]);

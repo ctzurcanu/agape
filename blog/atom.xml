@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xsl" href="atom.xsl"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://ctzurcanu.github.io/agape/blog/</id>
+    <title>The Agape Project Blog</title>
+    <updated>2025-06-30T00:00:00.000Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://ctzurcanu.github.io/agape/blog/"/>
+    <subtitle>The Agape Project Blog</subtitle>
+    <icon>https://ctzurcanu.github.io/agape/img/favicon.ico</icon>
+    <entry>
+        <title type="html"><![CDATA[The First Blog Post]]></title>
+        <id>https://ctzurcanu.github.io/agape/blog/first-post/</id>
+        <link href="https://ctzurcanu.github.io/agape/blog/first-post/"/>
+        <updated>2025-06-30T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[This is the beginning of The Agape Project. A project of artistic effort with deep hopes for the dawn of a new human civilization based on generosity towards others. I begin this with my personal gift to all humans, to all countries, to all religions. May this inspire others.]]></summary>
+        <content type="html"><![CDATA[<p>This is the beginning of The Agape Project. A project of artistic effort with deep hopes for the dawn of a new human civilization based on generosity towards others. I begin this with my personal gift to all humans, to all countries, to all religions. May this inspire others.</p>
+<p><a href="https://en.wikipedia.org/wiki/Agape" target="_blank" rel="noopener noreferrer">Agápē</a>: the highest form of love, charity that is unconditional as an investment in human <a href="https://virtues.provable.dev/docs/hierarchies" target="_blank" rel="noopener noreferrer">virtue</a>.</p>]]></content>
+        <author>
+            <name>Christian Tzurcanu</name>
+            <uri>https://www.youtube.com/@ChristianTzurcanu</uri>
+        </author>
+        <category label="hello" term="hello"/>
+        <category label="agape" term="agape"/>
+    </entry>
+</feed>

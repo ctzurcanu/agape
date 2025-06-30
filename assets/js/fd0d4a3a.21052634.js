@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkagape=self.webpackChunkagape||[]).push([[62860],{23765:a=>{a.exports=JSON.parse('{"metadata":{"permalink":"/agape/blog","page":1,"postsPerPage":10,"totalPages":1,"totalCount":1,"blogDescription":"Blog","blogTitle":"Blog"}}')}}]);

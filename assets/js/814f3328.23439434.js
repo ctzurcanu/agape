@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkagape=self.webpackChunkagape||[]).push([[67472],{55513:e=>{e.exports=JSON.parse('{"title":"Recent posts","items":[{"title":"The First Blog Post","permalink":"/agape/blog/first-post","unlisted":false,"date":"2025-06-30T00:00:00.000Z"}]}')}}]);
