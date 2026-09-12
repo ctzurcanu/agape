@@ -130,14 +130,14 @@ function topicUrl(id?: string | null) {
 function watchUrl(id: string, topic?: string | null) {
   return `/watch/${id}${topic ? `?topic=${topic}` : ''}`
 }
-function Breadcrumbs({ topics }: { topics: Topic[] }) {
+function Breadcrumbs({ topics, rootOnly = false }: { topics: Topic[]; rootOnly?: boolean }) {
   return (
     <nav className="breadcrumbs" aria-label="Breadcrumb">
-      <Link to="/">All topics</Link>
-      {topics.map((t) => (
+      {!rootOnly && <Link to="/">All topics</Link>}
+      {topics.map((t, i) => (
         <span key={t.node_id}>
-          {' '}
-          / <Link to={topicUrl(t.node_id)}>{t.name}</Link>
+          {(!rootOnly || i > 0) && ' / '}
+          <Link to={topicUrl(t.node_id)}>{t.name}</Link>
         </span>
       ))}
     </nav>
@@ -229,8 +229,8 @@ export function App() {
     <AppContext.Provider value={{ session, admin, locale, revision, refresh, signIn }}>
       <header className="header">
         <Link to="/" className="brand">
-          <span className="brand-icon">a</span>agape
-          <span className="brand-note">A SHARED CURIOSITY</span>
+          <img className="brand-logo" src={`${import.meta.env.BASE_URL}images/agape.svg`} alt="" />
+          agape
         </Link>
         <nav aria-label="Main navigation">
           <NavLink to="/" end>
@@ -248,8 +248,8 @@ export function App() {
             value={locale}
             onChange={(e) => setLocale(e.target.value)}
           >
-            <option value="en">EN</option>
-            <option value="fr">FR</option>
+            <option value="en">English</option>
+            <option value="fr">French</option>
           </select>
           <button
             className="button small"
@@ -263,7 +263,7 @@ export function App() {
               })
             }
           >
-            {session ? 'Sign out' : 'Join with Google'}
+            {session ? 'Sign out' : 'Join'}
             <span>↗</span>
           </button>
         </div>
@@ -665,6 +665,23 @@ function TV() {
     setStarted(false)
   }, [node, revision])
   const clip = data?.fragments[index]
+  const programPath = useLoad(async () => {
+    if (node || !clip) return [] as Topic[]
+    let topic = clip.node_id
+    if (!topic) {
+      const placements = await result<{ node_id: string }[]>(
+        db()
+          .from('fragment_topics')
+          .select('node_id')
+          .eq('fragment_id', clip.id)
+          .eq('status', 'approved')
+          .order('node_id')
+          .limit(1),
+      )
+      topic = placements[0]?.node_id
+    }
+    return topic ? (await browse(topic, locale)).breadcrumbs : []
+  }, [node, clip?.id, locale])
   const cues = useLoad(
     () =>
       clip
@@ -706,18 +723,7 @@ function TV() {
   }
   return (
     <div className="page tv-page">
-      <Breadcrumbs topics={data.breadcrumbs} />
-      <div className="section-heading">
-        <div>
-          <div className="eyebrow">
-            <span className="live-dot" /> AGAPE TV
-          </div>
-          <h1>{data.node?.name || 'All channels'}</h1>
-        </div>
-        <Link className="text-link" to={topicUrl(node)}>
-          Explore this topic ↗
-        </Link>
-      </div>
+      <Breadcrumbs rootOnly topics={node ? data.breadcrumbs : programPath.data || []} />
       {!clip ? (
         <Empty title="The next great moment could be yours.">
           <p>There are no approved fragments in this topic yet.</p>
@@ -749,7 +755,6 @@ function TV() {
               }}
             />
             <div className="tv-seek">
-              <label htmlFor="tv-program-seek">TV program</label>
               <div className="tv-track">
                 <input
                   id="tv-program-seek"
@@ -809,9 +814,15 @@ function TV() {
                   onChange={(e) => setSubtitleTrack(e.target.value)}
                 >
                   <option value="youtube">YouTube</option>
-                  <option value="version1">Version 1 · {locale.toUpperCase()}</option>
-                  <option value="version2">Version 2 · {locale.toUpperCase()}</option>
-                  <option value="version3">Version 3 · {locale.toUpperCase()}</option>
+                  <option value="version1">
+                    Version 1 · {locale === 'fr' ? 'French' : 'English'}
+                  </option>
+                  <option value="version2">
+                    Version 2 · {locale === 'fr' ? 'French' : 'English'}
+                  </option>
+                  <option value="version3">
+                    Version 3 · {locale === 'fr' ? 'French' : 'English'}
+                  </option>
                   <option value="off">Off</option>
                 </select>
               </label>
@@ -926,8 +937,8 @@ function TVSubtitleEditor({
     <details open className="panel tv-subtitle-editor">
       <summary>Edit {track.replace('version', 'version ')} subtitles</summary>
       <p>
-        Timed subtitles in {locale.toUpperCase()}. Use **bold**, *italic*, and [link
-        text](https://example.com). Times refer to the original video.
+        Timed subtitles in {locale === 'fr' ? 'French' : 'English'}. Use **bold**, *italic*, and
+        [link text](https://example.com). Times refer to the original video.
       </p>
       <Feedback error={work.error || owner.error} message={work.message} />
       {!session ? (
@@ -1482,8 +1493,8 @@ function Studio() {
               <span className="step">04 / ADD SOME CONTEXT</span>
               <h2>Creator subtitles</h2>
               <p className="muted">
-                Timed text in {locale.toUpperCase()}, shown below the player. Supports **bold**,
-                *italics*, and [links](https://example.com).
+                Timed text in {locale === 'fr' ? 'French' : 'English'}, shown below the player.
+                Supports **bold**, *italics*, and [links](https://example.com).
               </p>
               <form
                 className="stack-form"

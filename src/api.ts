@@ -48,6 +48,7 @@ export interface Video {
   duration_seconds: number
 }
 export interface Fragment {
+  node_id?: string
   curated?: boolean
   id: string
   video_id: string

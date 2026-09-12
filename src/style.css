@@ -1789,3 +1789,20 @@ body:has(.tv-page) main {
 .video-frame:fullscreen .video-subtitles {
   font-size: clamp(24px, 3vw, 48px);
 }
+
+.brand-logo {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+.tv-page > .breadcrumbs {
+  flex: 0 0 auto;
+  height: 28px;
+  line-height: 20px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.tv-stage .tv-seek {
+  grid-template-rows: auto;
+}
