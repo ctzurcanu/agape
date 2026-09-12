@@ -1,0 +1,9 @@
+project_id = "agape"
+
+[api]
+schemas = ["public", "agape"]
+
+[functions.agape-verify-video]
+# The handler validates every Supabase bearer token with auth.getUser().
+# Supports projects using asymmetric signing keys as well as legacy JWTs.
+verify_jwt = false

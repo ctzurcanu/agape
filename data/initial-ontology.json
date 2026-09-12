@@ -1,0 +1,125 @@
+{
+  "source": "https://www.youtube.com/@ChristianTzurcanu/playlists",
+  "observed": "2026-09-12",
+  "nodes": [
+    {
+      "slug": "videos",
+      "parent": null,
+      "name": "Videos",
+      "description": "Explore videos by subject, creative medium, and shared interests."
+    },
+    {
+      "slug": "music",
+      "parent": "videos",
+      "name": "Music",
+      "description": "Songs, compositions, and musical performances."
+    },
+    {
+      "slug": "ai-music",
+      "parent": "music",
+      "name": "AI Music",
+      "description": "Music created with AI tools and human creative direction. Initial branches are inspired by Christian Tzurcanu’s playlists."
+    },
+    {
+      "slug": "poetry-and-literature",
+      "parent": "ai-music",
+      "name": "Poetry & Literature",
+      "description": "AI musical interpretations of poems and literary works."
+    },
+    {
+      "slug": "calin-the-fool",
+      "parent": "poetry-and-literature",
+      "name": "Călin the Fool",
+      "description": "Musical interpretations of Mihai Eminescu’s Călin Nebunul.",
+      "source": "https://www.youtube.com/playlist?list=PLrZFPVQM38Mefu5tjsNjdwgEk1ibEhdWp"
+    },
+    {
+      "slug": "the-evening-star",
+      "parent": "poetry-and-literature",
+      "name": "The Evening Star — Luceafărul",
+      "description": "Musical interpretations of Mihai Eminescu’s Luceafărul.",
+      "source": "https://www.youtube.com/playlist?list=PLrZFPVQM38MeNf69jq7K0zxBBDJi_70hG"
+    },
+    {
+      "slug": "octavian-goga",
+      "parent": "poetry-and-literature",
+      "name": "Octavian Goga",
+      "description": "Poetry by Octavian Goga set to AI music.",
+      "source": "https://www.youtube.com/playlist?list=PLrZFPVQM38MfDc2aOUMwoLd0e9KluqXOF"
+    },
+    {
+      "slug": "arthur-rimbaud",
+      "parent": "poetry-and-literature",
+      "name": "Arthur Rimbaud",
+      "description": "Poetry by Arthur Rimbaud set to AI music.",
+      "source": "https://www.youtube.com/playlist?list=PLrZFPVQM38MeDPeBhdxy91k63PF-ptATx"
+    },
+    {
+      "slug": "paul-verlaine",
+      "parent": "poetry-and-literature",
+      "name": "Paul Verlaine",
+      "description": "Poetry by Paul Verlaine set to AI music.",
+      "source": "https://www.youtube.com/playlist?list=PLrZFPVQM38Mcc4jmEt6ZVYIGe0w9Zh-M8"
+    },
+    {
+      "slug": "folk-and-traditions",
+      "parent": "ai-music",
+      "name": "Folk & Traditions",
+      "description": "AI music inspired by folk songs and cultural traditions."
+    },
+    {
+      "slug": "irish",
+      "parent": "folk-and-traditions",
+      "name": "Irish",
+      "description": "AI music inspired by Irish musical traditions.",
+      "source": "https://www.youtube.com/playlist?list=PLrZFPVQM38Mc2R6UALBf43nl4CZAUgmJm"
+    },
+    {
+      "slug": "romanian-carols",
+      "parent": "folk-and-traditions",
+      "name": "Romanian Carols",
+      "description": "Romanian carols interpreted through AI music.",
+      "source": "https://www.youtube.com/playlist?list=PLrZFPVQM38Mfb6FD_7X6xunsqIE63Q2Dl"
+    },
+    {
+      "slug": "traditional",
+      "parent": "folk-and-traditions",
+      "name": "Traditional",
+      "description": "AI interpretations of traditional songs.",
+      "source": "https://www.youtube.com/playlist?list=PLrZFPVQM38MeUZwXkP2b3y2DHxwLyCiLw"
+    },
+    {
+      "slug": "sacred-and-biblical",
+      "parent": "ai-music",
+      "name": "Sacred & Biblical",
+      "description": "AI music drawing on sacred texts and religious themes."
+    },
+    {
+      "slug": "biblical",
+      "parent": "sacred-and-biblical",
+      "name": "Biblical",
+      "description": "AI songs inspired by biblical texts and stories.",
+      "source": "https://www.youtube.com/playlist?list=PLrZFPVQM38MdhlaRla_rQcpH4VK_BmMXm"
+    },
+    {
+      "slug": "war-and-peace",
+      "parent": "ai-music",
+      "name": "War & Peace",
+      "description": "AI music exploring conflict, peace, and martial traditions."
+    },
+    {
+      "slug": "anti-war",
+      "parent": "war-and-peace",
+      "name": "Anti-war",
+      "description": "AI songs with anti-war themes.",
+      "source": "https://www.youtube.com/playlist?list=PLrZFPVQM38MeR4gYJ-JStxVhwVcS2-JYm"
+    },
+    {
+      "slug": "march",
+      "parent": "war-and-peace",
+      "name": "March",
+      "description": "Marches interpreted through AI music.",
+      "source": "https://www.youtube.com/playlist?list=PLrZFPVQM38MehGMnlJR1sj10sd5Z9DtJr"
+    }
+  ]
+}
