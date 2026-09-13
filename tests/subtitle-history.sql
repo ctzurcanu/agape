@@ -150,19 +150,65 @@ do $$ begin
  exception when insufficient_privilege then null; end;
 end $$;
 reset role;
--- A TV owner needs no site-wide role. Layout saves are atomic; editions immutable.
-delete from agape.members where user_id='ac000000-0000-4000-8000-000000000001';
-insert into agape.tv_program(selection_key,owner_id,title) values('ac000000-0000-4000-8000-000000000003','ac000000-0000-4000-8000-000000000001','Named TV');
+-- Without a program row, even a site administrator gets an explicit error rather than a partial save.
 select set_config('request.jwt.claim.sub','ac000000-0000-4000-8000-000000000001',true);
 set local role authenticated;
-do $$ declare original jsonb; changed jsonb; eid uuid; denied boolean:=false; begin
+do $$ declare original jsonb; begin
+ original:=agape.tv_browse('ac000000-0000-4000-8000-000000000003','en')->'fragments';
+ begin
+  perform agape.save_tv_layout('ac000000-0000-4000-8000-000000000003',original,original,'Unowned');
+  raise exception 'Layout saved without a TV program';
+ exception when no_data_found then null; end;
+ begin
+  perform agape.tv_edition_preview('ac000000-0000-4000-8000-000000000003');
+  raise exception 'Edition preview without a TV program';
+ exception when no_data_found then null; end;
+end $$;
+reset role;
+-- A TV owner needs no site-wide role. Layout saves are atomic; editions immutable.
+delete from agape.members where user_id='ac000000-0000-4000-8000-000000000001';
+select set_config('request.jwt.claim.sub','ac000000-0000-4000-8000-000000000002',true);
+set local role authenticated;
+do $$ begin
+ if agape.can_claim_tv('ac000000-0000-4000-8000-000000000003') then raise exception 'Creator without an approved video may claim'; end if;
+ begin
+  perform agape.claim_tv_program('ac000000-0000-4000-8000-000000000003','Not mine');
+  raise exception 'Ineligible TV claim accepted';
+ exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+insert into agape.video_topics(video_id,node_id,status) values('historytest','ac000000-0000-4000-8000-000000000003','approved');
+select set_config('request.jwt.claim.sub','ac000000-0000-4000-8000-000000000001',true);
+set local role authenticated;
+do $$ begin
+ begin
+  perform agape.claim_tv_program(null,'Root TV');
+  raise exception 'Non-admin root TV claim accepted';
+ exception when insufficient_privilege then null; end;
+ if not agape.can_claim_tv('ac000000-0000-4000-8000-000000000003') then raise exception 'Eligible creator cannot claim'; end if;
+ perform agape.claim_tv_program('ac000000-0000-4000-8000-000000000003','Named TV');
+ begin
+  perform agape.claim_tv_program('ac000000-0000-4000-8000-000000000003','Again');
+  raise exception 'Second TV claim accepted';
+ exception when unique_violation then null; end;
+end $$;
+do $$ declare original jsonb; changed jsonb; eid uuid; denied boolean:=false; fingerprint text; begin
  if agape.is_admin() or not agape.can_edit_tv('ac000000-0000-4000-8000-000000000003') then raise exception 'Owner permissions incorrect'; end if;
  original:=agape.tv_browse('ac000000-0000-4000-8000-000000000003','en')->'fragments';
  select jsonb_agg(value order by ordinality desc) into changed from jsonb_array_elements(original) with ordinality;
  perform agape.save_tv_layout('ac000000-0000-4000-8000-000000000003',original,changed,'My TV');
- eid:=agape.publish_tv_edition('ac000000-0000-4000-8000-000000000003');
+ eid:=agape.publish_tv_edition('ac000000-0000-4000-8000-000000000003',agape.tv_edition_preview('ac000000-0000-4000-8000-000000000003')->>'fingerprint');
  perform agape.save_tv_layout('ac000000-0000-4000-8000-000000000003',changed,original,'Next draft');
  if not exists(select 1 from agape.tv_edition where id=eid and title='My TV' and fragments=changed and jsonb_array_length(tracks)>0) then raise exception 'Edition changed with draft or lost captions'; end if;
+ -- An edition freezes only what its owner reviewed.
+ fingerprint:=agape.tv_edition_preview('ac000000-0000-4000-8000-000000000003')->>'fingerprint';
+ perform agape.save_tv_track('ac000000-0000-4000-8000-000000000003','version2','en',0,'[]');
+ begin
+  perform agape.publish_tv_edition('ac000000-0000-4000-8000-000000000003',fingerprint);
+  raise exception 'Edition published from a stale review';
+ exception when serialization_failure then null; end;
+ if (select count(*) from agape.tv_edition where selection_key='ac000000-0000-4000-8000-000000000003')<>1 then raise exception 'Stale publish created an edition'; end if;
+ perform agape.publish_tv_edition('ac000000-0000-4000-8000-000000000003',agape.tv_edition_preview('ac000000-0000-4000-8000-000000000003')->>'fingerprint');
  begin
   perform agape.save_tv_layout('ac000000-0000-4000-8000-000000000003',changed,original,'Stale');
   raise exception 'Stale layout accepted';

@@ -142,15 +142,19 @@ placements. Unapproved topic assignments cannot grant comment rights.
 
 ### TV ownership, saving, and editions
 
-A named TV has an explicit owner in `agape.tv_program`. Its creator can save
+A named TV has an explicit owner in `agape.tv_program`. **Create this TV** claims an
+unowned selection: a site administrator can claim any selection, and a creator can
+claim a topic in whose subtree they have a currently verified, approved video. The root
+TV is administrator-only. Saving requires an existing program. Its creator can save
 reordering, source trims, and additions without an Agape-wide administrator role.
 Sequence edits save atomically and retain a browser draft until acknowledged.
 On reopening the editor, a matching previous draft offers **Publish video changes**;
 this also recognizes the older array-format drafts. Stale saves are rejected.
 Drafts are scoped to the browser origin: localhost and GitHub Pages have separate storage.
 
-**Save TV** updates the current program. **Publish stable edition** freezes its name,
-ordered source ranges, and all available custom subtitle alternatives and languages.
+**Save TV** updates the current program. **Review stable edition** lists exactly what will
+be frozen: its name, ordered source ranges, and all available subtitle alternatives and
+languages. **Publish this edition** is rejected if anything changed after that review.
 Each edition has a permanent `?edition=<UUID>` link and is selectable in the player.
 Frozen editions cannot be edited; return to **Current TV** to make further changes.
 YouTube-hosted video availability and YouTube's own captions remain externally controlled.

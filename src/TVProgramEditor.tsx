@@ -4,6 +4,14 @@ import { SubtitleEditor } from './SubtitleEditor'
 import { loadTVTrack, programCues, sourceCues } from './tvProgram'
 import { programTimeline, videoId } from './utils'
 
+type EditionPreview = {
+  title: string
+  revision: number
+  sections: { id: string; title: string; start_seconds: number; end_seconds: number }[]
+  tracks: { track: string; locale: string; cues: number }[]
+  fingerprint: string
+}
+
 function SectionTiming({
   section,
   disabled,
@@ -85,15 +93,21 @@ export function TVProgramEditor({
   onLayoutSaved: (sections: Fragment[]) => void
 }) {
   const [owner, setOwner] = useState(false)
+  const [hasProgram, setHasProgram] = useState(false)
+  const [canClaim, setCanClaim] = useState(false)
   const [programTitle, setProgramTitle] = useState('')
   const [savedTitle, setSavedTitle] = useState('')
   const [editionLink, setEditionLink] = useState('')
+  const [review, setReview] = useState<EditionPreview>()
   const [layoutReady, setLayoutReady] = useState(false)
-  const admin = layoutReady && Boolean(userId) && (siteAdmin || owner)
+  const admin = layoutReady && Boolean(userId) && hasProgram && (siteAdmin || owner)
   useEffect(() => {
     setOwner(false)
+    setHasProgram(false)
+    setCanClaim(false)
     void Promise.all([
       result<boolean>(db().rpc('can_edit_tv', { p_node: node || null })),
+      result<boolean>(db().rpc('can_claim_tv', { p_node: node || null })),
       result<{ title: string } | null>(
         db()
           .from('tv_program')
@@ -102,8 +116,10 @@ export function TVProgramEditor({
           .maybeSingle(),
       ),
     ])
-      .then(([allowed, program]) => {
+      .then(([allowed, claimable, program]) => {
         setOwner(allowed)
+        setCanClaim(claimable)
+        setHasProgram(Boolean(program))
         setProgramTitle(program?.title || 'Agape TV')
         setSavedTitle(program?.title || 'Agape TV')
       })
@@ -223,6 +239,7 @@ export function TVProgramEditor({
     return edition.cues
   }
   async function publish(_base: Cue[], rows: Cue[]) {
+    setReview(undefined)
     expected.current = await result<number>(
       db().rpc('save_tv_track', {
         p_node: node || null,
@@ -253,6 +270,7 @@ export function TVProgramEditor({
   }
   async function saveLayout(next: Fragment[]) {
     if (busy || !layoutReady) return
+    setReview(undefined)
     keepLocal(next)
     if (!admin) {
       setError('Draft saved on this device. Join as the TV owner to save it online.')
@@ -282,10 +300,27 @@ export function TVProgramEditor({
   async function publishLayout() {
     await saveLayout(sections)
   }
-  async function publishEdition() {
+  async function claim() {
+    if (busy) return
+    setBusy(true)
+    setError('')
+    try {
+      await result(db().rpc('claim_tv_program', { p_node: node || null, p_title: programTitle }))
+      setHasProgram(true)
+      setOwner(true)
+      setCanClaim(false)
+      setSavedTitle(programTitle)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function reviewEdition() {
     if (!admin || busy || localLayout) return
     setBusy(true)
     setError('')
+    setReview(undefined)
     try {
       await result(
         db().rpc('save_tv_layout', {
@@ -295,12 +330,33 @@ export function TVProgramEditor({
           p_title: programTitle,
         }),
       )
-      const id = await result<string>(db().rpc('publish_tv_edition', { p_node: node || null }))
       setSavedTitle(programTitle)
+      setReview(
+        await result<EditionPreview>(db().rpc('tv_edition_preview', { p_node: node || null })),
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  // The server rejects the publish if anything differs from the reviewed snapshot.
+  async function publishEdition() {
+    if (!admin || busy || !review) return
+    setBusy(true)
+    setError('')
+    try {
+      const id = await result<string>(
+        db().rpc('publish_tv_edition', {
+          p_node: node || null,
+          p_fingerprint: review.fingerprint,
+        }),
+      )
       setEditionLink(`#/tv/${node || ''}?edition=${id}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
+      setReview(undefined)
       setBusy(false)
     }
   }
@@ -355,11 +411,19 @@ export function TVProgramEditor({
         >
           Save TV
         </button>
+        {!hasProgram && canClaim && (
+          <button
+            disabled={busy || !layoutReady || !programTitle.trim()}
+            onClick={() => void claim()}
+          >
+            Create this TV
+          </button>
+        )}
         <button
           disabled={!admin || busy || localLayout || !programTitle.trim()}
-          onClick={() => void publishEdition()}
+          onClick={() => void reviewEdition()}
         >
-          Publish stable edition
+          Review stable edition…
         </button>
         <span role="status">
           {!layoutReady
@@ -374,6 +438,36 @@ export function TVProgramEditor({
         </span>
         {editionLink && <a href={editionLink}>Watch published edition ↗</a>}
       </div>
+      {review && (
+        <div className="notice" role="dialog" aria-label="Review stable edition">
+          <p>
+            Freeze “{review.title}” (revision {review.revision}) exactly as listed. Any change
+            made before publishing cancels this review.
+          </p>
+          <ol>
+            {review.sections.map((s) => (
+              <li key={s.id}>
+                {s.title}{' '}
+                <small>
+                  ({s.start_seconds}–{s.end_seconds}s)
+                </small>
+              </li>
+            ))}
+          </ol>
+          <p>
+            Subtitles:{' '}
+            {review.tracks.length
+              ? review.tracks.map((t) => `${t.track} · ${t.locale} (${t.cues} cues)`).join(', ')
+              : 'none'}
+          </p>
+          <button disabled={busy} onClick={() => void publishEdition()}>
+            Publish this edition
+          </button>{' '}
+          <button disabled={busy} onClick={() => setReview(undefined)}>
+            Cancel
+          </button>
+        </div>
+      )}
       <details
         className="tv-section-manager"
         open={sectionTools}
@@ -387,9 +481,13 @@ export function TVProgramEditor({
         </p>
         {!admin && (
           <p className="notice">
-            {userId
-              ? 'Only this TV’s owner or a site administrator can save its sequence.'
-              : 'Join as the TV owner to save your changes online.'}{' '}
+            {!userId
+              ? 'Join as the TV owner to save your changes online.'
+              : hasProgram
+                ? 'Only this TV’s owner or a site administrator can save its sequence.'
+                : canClaim
+                  ? 'Create this TV to save its sequence online.'
+                  : 'This TV has no owner yet. A site administrator, or a creator with a verified video approved in this topic, can create it.'}{' '}
             {!userId && <button onClick={signIn}>Join</button>}
           </p>
         )}
