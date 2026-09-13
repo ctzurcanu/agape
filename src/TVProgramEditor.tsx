@@ -281,7 +281,9 @@ export function TVProgramEditor({
           signIn={signIn}
           onSaved={onSaved}
           program={{
-            revision: expected.current,
+            get revision() {
+              return expected.current
+            },
             resumeRevision: (n) => {
               expected.current = n
             },
