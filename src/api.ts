@@ -59,6 +59,7 @@ export interface Fragment {
   end_seconds: number
 }
 export interface Cue {
+  revision?: number
   track?: string
   id: string
   video_id: string

@@ -740,6 +740,7 @@ function TV() {
               start={Number(clip.start_seconds)}
               end={Number(clip.end_seconds)}
               overlayCaptions
+              paused={editorOpen}
               captionMode={
                 subtitleTrack === 'youtube' ? 'youtube' : subtitleTrack === 'off' ? 'off' : 'custom'
               }
@@ -750,6 +751,7 @@ function TV() {
                 subtitleTrack === 'off' ? [] : cues.data?.filter((c) => c.track === subtitleTrack)
               }
               onEnd={() => {
+                if (editorOpen) return
                 setStarted(true)
                 next()
               }}
@@ -920,12 +922,76 @@ function TVSubtitleEditor({
 }) {
   const { session, locale, signIn } = useApp()
   const work = useWork()
-  const [start, setStart] = useState(String(clip.start_seconds))
+  const draftKey = `agape.subtitle-draft:${session?.user.id || 'guest'}:${clip.curated ? clip.id : clip.video_id}:${track}:${locale}`
+  const [draft] = useState(() => {
+    try {
+      const value = JSON.parse(localStorage.getItem(draftKey) || '{}')
+      return value && typeof value === 'object'
+        ? (value as {
+            start?: string
+            end?: string
+            text?: string
+            editing?: string
+            revision?: number
+          })
+        : {}
+    } catch {
+      return {}
+    }
+  })
+  const [start, setStart] = useState(draft.start ?? String(clip.start_seconds))
   const [end, setEnd] = useState(
-    String(Math.min(Number(clip.end_seconds), Number(clip.start_seconds) + 5)),
+    draft.end ?? String(Math.min(Number(clip.end_seconds), Number(clip.start_seconds) + 5)),
   )
-  const [text, setText] = useState('')
-  const [editing, setEditing] = useState<string>()
+  const [text, setText] = useState(draft.text ?? '')
+  const [editing, setEditing] = useState<string | undefined>(draft.editing)
+  const [expectedRevision, setExpectedRevision] = useState<number | undefined>(draft.revision)
+  const [draftStored, setDraftStored] = useState(false)
+  useEffect(() => {
+    try {
+      if (text || editing)
+        localStorage.setItem(
+          draftKey,
+          JSON.stringify({ start, end, text, editing, revision: expectedRevision }),
+        )
+      else localStorage.removeItem(draftKey)
+      setDraftStored(Boolean(text || editing))
+    } catch {
+      setDraftStored(false)
+    }
+  }, [draftKey, start, end, text, editing, expectedRevision])
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyRevision, setHistoryRevision] = useState(0)
+  const source = clip.curated ? 'curated' : 'creator'
+  const history = useLoad(
+    () =>
+      session && historyOpen
+        ? result<
+            {
+              id: number
+              cue_id: string
+              revision: number
+              operation: string
+              editor: string | null
+              recorded_at: string
+              snapshot: Cue
+            }[]
+          >(
+            db().rpc('subtitle_history_list', {
+              p_source: source,
+              p_context: clip.curated ? clip.id : clip.video_id,
+              p_track: track,
+              p_locale: locale,
+            }),
+          )
+        : Promise.resolve([]),
+    [clip.id, track, locale, session?.user.id, historyOpen, historyRevision],
+  )
+  function saved() {
+    onSaved()
+    setHistoryRevision((n) => n + 1)
+  }
+
   const owner = useLoad(
     () =>
       clip.curated
@@ -940,7 +1006,11 @@ function TVSubtitleEditor({
         Timed subtitles in {locale === 'fr' ? 'French' : 'English'}. Use **bold**, *italic*, and
         [link text](https://example.com). Times refer to the original video.
       </p>
-      <Feedback error={work.error || owner.error} message={work.message} />
+      <p className="muted">
+        Playback is paused while this editor is open.{' '}
+        {draftStored && 'Your draft is saved on this device.'}
+      </p>
+      <Feedback error={work.error || owner.error || history.error} message={work.message} />
       {!session ? (
         <button onClick={() => work.run(signIn)}>Sign in to add subtitles ↗</button>
       ) : !owner.data ? (
@@ -960,14 +1030,14 @@ function TVSubtitleEditor({
               }
               if (editing) {
                 await result(
-                  table
-                    .update({
-                      ...values,
-                      ...(clip.curated
-                        ? { user_id: session.user.id, updated_at: new Date().toISOString() }
-                        : {}),
-                    })
-                    .eq('id', editing),
+                  db().rpc('save_subtitle', {
+                    p_source: source,
+                    p_id: editing,
+                    p_expected: expectedRevision,
+                    p_start: values.start_seconds,
+                    p_end: values.end_seconds,
+                    p_markdown: values.markdown,
+                  }),
                 )
               } else {
                 await result(
@@ -981,8 +1051,9 @@ function TVSubtitleEditor({
               }
               setText('')
               setEditing(undefined)
+              setExpectedRevision(undefined)
               work.setMessage('Subtitle saved to this version.')
-              onSaved()
+              saved()
             })
           }}
         >
@@ -1032,6 +1103,23 @@ function TVSubtitleEditor({
           </button>
         </form>
       )}
+      {work.error && (
+        <button className="plain" onClick={() => saved()}>
+          Reload latest subtitles (keep my draft)
+        </button>
+      )}
+      {editing && (
+        <button
+          className="plain"
+          onClick={() => {
+            setEditing(undefined)
+            setExpectedRevision(undefined)
+            setText('')
+          }}
+        >
+          Cancel cue edit
+        </button>
+      )}
       {cues.map((c) => (
         <div className="cue" key={c.id}>
           <span>
@@ -1045,6 +1133,7 @@ function TVSubtitleEditor({
                   className="plain"
                   onClick={() => {
                     setEditing(c.id)
+                    setExpectedRevision(c.revision)
                     setStart(String(c.start_seconds))
                     setEnd(String(c.end_seconds))
                     setText(c.markdown)
@@ -1059,12 +1148,17 @@ function TVSubtitleEditor({
                 onClick={() =>
                   work.run(async () => {
                     await result(
-                      db()
-                        .from(clip.curated ? 'tv_subtitle_cue' : 'subtitle_cues')
-                        .delete()
-                        .eq('id', c.id),
+                      db().rpc('save_subtitle', {
+                        p_source: source,
+                        p_id: c.id,
+                        p_expected: c.revision,
+                        p_start: c.start_seconds,
+                        p_end: c.end_seconds,
+                        p_markdown: c.markdown,
+                        p_delete: true,
+                      }),
                     )
-                    onSaved()
+                    saved()
                   })
                 }
               >
@@ -1074,6 +1168,73 @@ function TVSubtitleEditor({
           )}
         </div>
       ))}
+      {session && owner.data && (
+        <section className="subtitle-history">
+          <button className="plain" onClick={() => setHistoryOpen((v) => !v)}>
+            {historyOpen ? 'Hide history' : 'Revision history & restore'}
+          </button>
+          {historyOpen && (
+            <>
+              <p className="muted">
+                Latest 100 changes for this track. Restoring creates a new revision and keeps the
+                history.
+              </p>
+              {!history.data ? (
+                <p>Loading history…</p>
+              ) : !history.data.length ? (
+                <p>No revisions yet.</p>
+              ) : (
+                history.data.map((h) => {
+                  const latest = Math.max(
+                    ...(history.data || [])
+                      .filter((r) => r.cue_id === h.cue_id)
+                      .map((r) => r.revision),
+                  )
+                  return (
+                    <article className="cue" key={h.id}>
+                      <small>
+                        Revision {h.revision} · {h.operation} ·{' '}
+                        {new Date(h.recorded_at).toLocaleString()} ·{' '}
+                        {h.editor
+                          ? h.editor === session.user.id
+                            ? 'You'
+                            : `Contributor ${h.editor.slice(0, 8)}`
+                          : 'Initial content'}
+                      </small>
+                      <p>
+                        {timeLabel(h.snapshot.start_seconds)}–{timeLabel(h.snapshot.end_seconds)}
+                      </p>
+                      <Markdown text={h.snapshot.markdown} />
+                      {(h.revision < latest || h.operation === 'delete') && (
+                        <button
+                          className="plain"
+                          disabled={work.busy}
+                          onClick={() =>
+                            work.run(async () => {
+                              await result(
+                                db().rpc('restore_subtitle', {
+                                  p_history: h.id,
+                                  p_expected: latest,
+                                }),
+                              )
+                              work.setMessage('Subtitle restored as a new revision.')
+                              saved()
+                            })
+                          }
+                        >
+                          {h.operation === 'delete'
+                            ? 'Restore removed subtitle'
+                            : 'Restore this revision'}
+                        </button>
+                      )}
+                    </article>
+                  )
+                })
+              )}
+            </>
+          )}
+        </section>
+      )}
     </details>
   )
 }

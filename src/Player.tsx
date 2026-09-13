@@ -51,6 +51,7 @@ export function Player({
   onTime,
   captionMode = 'youtube',
   overlayCaptions = false,
+  paused = false,
 }: {
   video: string
   start?: number
@@ -60,6 +61,7 @@ export function Player({
   seek?: { time: number; request: number }
   captionMode?: 'youtube' | 'custom' | 'off'
   overlayCaptions?: boolean
+  paused?: boolean
   onTime?: (time: number) => void
   onEnd?: () => void
 }) {
@@ -70,6 +72,20 @@ export function Player({
   useEffect(() => {
     if (control.current) setYouTubeCaptions(control.current, captionMode === 'youtube')
   }, [captionMode])
+  const pauseRequested = useRef(paused)
+  pauseRequested.current = paused
+  const resumeAfterEdit = useRef(false)
+  useEffect(() => {
+    const player = control.current
+    if (!player) return
+    if (paused) {
+      resumeAfterEdit.current = player.getPlayerState() === YT.PlayerState.PLAYING
+      player.pauseVideo()
+    } else if (resumeAfterEdit.current) {
+      resumeAfterEdit.current = false
+      player.playVideo()
+    }
+  }, [paused])
   const latestSeek = useRef(seek)
   latestSeek.current = seek
   const progress = useRef(onTime)
@@ -98,7 +114,7 @@ export function Player({
       if (mode.current !== 'youtube') setYouTubeCaptions(target, false)
     }
     const finish = () => {
-      if (!finished) {
+      if (!finished && !pauseRequested.current) {
         finished = true
         player?.pauseVideo()
         done.current?.()
@@ -125,7 +141,7 @@ export function Player({
               setYouTubeCaptions(e.target, mode.current === 'youtube')
               control.current = e.target
               e.target.getIframe().title = 'YouTube video player'
-              if (auto)
+              if (auto && !pauseRequested.current)
                 e.target.loadVideoById({
                   videoId: video,
                   startSeconds: latestSeek.current?.time ?? Number(start),
@@ -148,6 +164,10 @@ export function Player({
             onApiChange: (e) => suppressCaptions(e.target),
             onStateChange: (e) => {
               suppressCaptions(e.target)
+              if (pauseRequested.current && e.data === YT.PlayerState.PLAYING) {
+                e.target.pauseVideo()
+                return
+              }
               if (e.data === YT.PlayerState.ENDED) finish()
             },
             onError: (e) =>

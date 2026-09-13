@@ -1,6 +1,6 @@
 # Agape: uses and future ideas
 
-This is a living collection of product ideas, not a list of implemented features or committed work. Start small, observe how creators use Agape, and refine the rules with them.
+This is a living collection of product ideas and agreed design decisions, not a list of implemented features. Decisions recorded on 2026-09-13 are identified below; tentative ideas and TBD items remain open. Start small, observe how creators use Agape, and refine the rules with them.
 
 ## Core direction
 
@@ -65,7 +65,7 @@ Keep YouTube captions available in the dropdown alongside Agape’s alternatives
 - Pause playback while editing so a transition cannot discard unfinished work.
 - Preview a cue at its timestamp and compare two versions without restarting the video.
 - Import and export SRT or WebVTT, explaining how formatting and links survive conversion.
-- Let a contributor propose a translation or correction for review rather than overwrite a published track immediately.
+- Explore review for proposed translations and corrections; the immediate-publication rule remains open. **Tentative:** use AI to filter injurious language. How flagged text is reviewed, corrected, or appealed is still to be decided.
 - Restore earlier revisions and show who changed text, timing, or links.
 - Offer viewer preferences for size, background opacity, and placement.
 - Make links operable with keyboard and touch; optionally pause playback when opening a source.
@@ -78,7 +78,7 @@ Keep YouTube captions available in the dropdown alongside Agape’s alternatives
 
 A proposed starting rule: a verified creator with an approved video in the selected topic subtree can cast a creator vote there. Viewers could have a separate audience reaction; do not combine the two silently.
 
-A vote should record the object, topic context, ballot or season, voter, and eligibility basis. One eligible person should not gain more votes by connecting several channels or publishing many videos.
+A vote should record the object, topic context, ballot or season, voter, and eligibility basis. Each creator has one contribution-based voting budget. Connecting several channels must not duplicate that budget; eligible contributions increase it according to the website-wide formula below.
 
 - **Videos:** vote within an approved topic placement. Require a different creator from the video owner and credited collaborators.
 - **TVs:** vote within the TV’s approved topic context. Exclude its curator and co-curators from voting for their own program.
@@ -90,6 +90,33 @@ Decide explicitly whether contributors in sibling subtopics may vote at a shared
 
 Keep a vote-time eligibility snapshot. When verification expires, require renewal for new votes; do not silently erase historical ballots. Confirmed fraud can invalidate past votes through an auditable moderation decision.
 
+### Contribution-based voting budget
+
+**Decision — 2026-09-13:** each creator receives a voting budget calculated from their contributions, minus fines:
+
+```text
+voting_budget = a * no_videos
+              + b * no_subtitles
+              + c * no_comments_on_others
+              + …
+              - z * fines
+```
+
+- `no_videos`: the creator’s counted video contributions.
+- `no_subtitles`: the creator’s counted subtitle contributions.
+- `no_comments_on_others`: comments on other creators’ work.
+- `…`: additional contribution categories that may be added later.
+- `fines`: penalties deducted through the coefficient `z`.
+- `a`, `b`, `c`, …, `z` are floating-point coefficients configured website-wide, rather than separately for each creator or topic.
+
+**Tentative:** the community may set or change these coefficients by vote. The governance procedure is not decided yet.
+
+The budget determines how much voting power a creator can spend; topic eligibility still determines where they can vote. Rules for allocating that budget across objects and ballots remain to be defined.
+
+Open implementation questions include the counting period, renewal and carryover, vote costs, whether subtitles are counted as tracks or individual cues, which contributions qualify, how fines are measured and imposed, and how to handle a negative balance. No coefficient values are chosen yet.
+
+Suggested safeguards: show each creator a breakdown of earned, spent, and deducted budget; keep an auditable ledger; prevent duplicate counting and concurrent overspending; version coefficient changes with an effective date. Contribution spam and repeated trivial edits must not become an easy way to manufacture voting power.
+
 ### Ballot formats to explore
 
 - **Useful / recommend:** a simple positive signal for an initial release.
@@ -97,9 +124,9 @@ Keep a vote-time eligibility snapshot. When verification expires, require renewa
 - **Pairwise comparison:** choose between two eligible works after seeing both. Include “cannot judge” and “too different.”
 - **Ranked shortlists:** order a limited set of nominees in a festival or weekly selection.
 - **Nomination plus review:** creators nominate work; randomly assigned peers produce the shortlist.
-- **Limited voting budget:** a fixed number of endorsements per period encourages selectivity.
+- **Contribution-based voting budget:** endorsements consume the creator’s available budget under the formula above; allocation rules remain to be decided.
 
-Start with one format rather than several competing scoring systems. A reasonable first experiment is a topic-scoped recommendation with an optional explanation, one active vote per eligible creator and object, and no self-voting.
+Start with one format rather than several competing scoring systems. A reasonable first experiment is a topic-scoped recommendation with an optional explanation, no self-voting, and spending constrained by the contribution-based budget. Whether repeated allocations to the same object are allowed remains open.
 
 ### Fairness and abuse resistance
 
@@ -108,9 +135,9 @@ Start with one format rather than several competing scoring systems. A reasonabl
 - Use rate limits and server-side eligibility checks; a hidden UI button is not enforcement.
 - Monitor unusually reciprocal voting, coordinated bursts, and tightly connected voting groups. Treat them as review signals, not automatic proof of abuse.
 - Rotate review assignments and limit repeated assignments between the same creators.
-- Hide running totals during competitive ballots to reduce bandwagon effects.
+- **Decision:** reveal votes only after the ballot closes. Keep votes and running totals hidden from other participants while voting is open.
 - Let users skip unfamiliar work without penalty.
-- Consider private ballots with public aggregate results and an audit trail for moderators.
+- Keep an audit trail for moderators. The exact post-close disclosure format, including whether voter identities are shown, still needs to be specified.
 - Allow vote changes until a ballot closes; freeze the result afterward, apart from documented corrections.
 - Explain removals and offer appeals. Avoid permanent public labels based on automated suspicion.
 - Do not sell votes, ranking weight, or voting eligibility.
@@ -128,11 +155,13 @@ There should be several leaderboards with clear purposes, rather than a single s
 
 ### Ranking choices
 
+- **Decision:** present a topic’s TV results as a **top-10 ranked leaderboard**, rather than a single winner. Show fewer entries when fewer works qualify.
 - Offer topic-specific and time-specific boards: weekly, monthly, seasonal, and all-time.
 - Show the number of eligible voters and the ranking window next to a score.
-- Use a minimum evidence threshold or a “provisional” label for tiny samples.
+- **Decision:** use a configurable participation threshold, initially **3 works**. This counts works, not voters or votes; any additional voter-count threshold remains TBD. Label results below the threshold as provisional.
 - Explore confidence-adjusted or Bayesian scores instead of raw averages; publish the method and parameter changes.
 - For pairwise ballots, explore a pairwise ranking model with uncertainty rather than counting wins alone.
+- **Decision:** the first page includes some randomly selected works to give creators exposure beyond the leaderboard. The number of slots and sampling rules remain open.
 - Keep emerging-creator boards and discovery slots so established winners do not occupy every surface.
 - Normalize creator rankings across a limited set of works rather than rewarding unlimited uploads.
 - Rank a TV edition against the edition people actually watched, not a subsequently rewritten queue.
@@ -181,6 +210,7 @@ These are design candidates, not migrations to apply yet:
 - `tv_program`, `tv_program_revision`, `tv_program_item`, `tv_program_topic`: named TVs, immutable published editions, ordered fragments, and approved topic placements.
 - `subtitle_track`, `subtitle_revision`, `subtitle_cue_revision`: track names, credits, languages, published versions, drafts, and change history.
 - `ballot`, `vote`, `vote_criterion`, `vote_eligibility_snapshot`: voting windows, scope, criteria, and auditable eligibility.
+- `voting_budget_config`, `voting_budget_ledger`, `fine`: website-wide floating-point coefficients, contribution credits, vote spending, penalties, and effective dates.
 - `review_assignment`, `peer_review`, `review_helpfulness`: assigned reviews and feedback on usefulness.
 - `leaderboard_snapshot`, `leaderboard_entry`, `ranking_method`: reproducible results tied to a documented method and period.
 - `creator_credit`, `collaboration`, `conflict_declaration`: ownership and collaboration context for attribution and voting exclusions.
@@ -192,19 +222,31 @@ All ontology references should point into `agape`. Shared authentication identit
 
 1. **Finish the viewing and authoring loop.** Reliable playback, three named editable subtitle alternatives, revision history, pause-while-editing, and accessible controls.
 2. **Make TVs first-class.** Named programs, stable editions, reorderable fragments, curator credits, and shareable links.
-3. **Pilot peer recommendations in one topic.** Clear eligibility, one vote per creator, self-vote exclusions, moderation, and an explicit pilot period.
+3. **Pilot peer recommendations in one topic.** Clear eligibility, contribution-based budgets, self-vote exclusions, moderation, an explicit pilot period, and votes revealed after close.
 4. **Publish video and TV leaderboards.** Show vote counts, uncertainty, time windows, and discovery slots alongside winners.
 5. **Add creator recognition and topic health boards.** Reward useful reviewing and collaboration, and keep these distinct from popularity.
 6. **Explore events and advanced ballots.** Pairwise comparisons, synchronized screenings, translation awards, and cross-topic showcases after the basic rules work.
 
+## Implementation progress
+
+Started on **2026-09-13**, following the progression above:
+
+- **Subtitle authoring foundation:** pause playback while the TV editor is open; keep unfinished cue drafts on the current device; record text, timing, and deletion history; restore previous revisions, including removed cues; reject stale saves and restores rather than overwrite a newer contribution. Curated tracks remain collaboratively editable; verified video tracks remain creator-only.
+- **Next:** named TV programs and stable published editions, followed by contribution-based voting budgets and ballots, then video/TV leaderboards and random discovery.
+- Voting, budgets, rankings, and AI moderation remain planned features.
+
 ## Questions to decide through small experiments
 
-- Are votes public, anonymous to other creators, or revealed only after the ballot closes?
-- What is enough participation before a ranking becomes meaningful?
-- Which criteria help creators improve rather than simply reward familiarity?
-- Should a topic pick one TV winner, several editorial selections, or no winner at all?
-- How much weight should reviewers, curators, and audiences each have?
-- How do we credit source authors and collaborators without treating every credit as a verified account?
-- Which subtitle changes can publish immediately, and which need review?
-- How do new creators receive enough exposure to earn their first independent votes?
-- Which measures indicate a welcoming, productive community without becoming targets for gaming?
+Decisions and open questions recorded on **2026-09-13**:
+
+| Question | Current direction |
+| --- | --- |
+| Are votes public, anonymous to other creators, or revealed only after the ballot closes? | **Decision:** revealed after the ballot closes. The exact disclosure format remains open. |
+| What is enough participation before a ranking becomes meaningful? | **Decision:** configurable; start with **3 works**. |
+| Which criteria help creators improve rather than simply reward familiarity? | **TBD.** |
+| Should a topic pick one TV winner, several editorial selections, or no winner at all? | **Decision:** a leaderboard with **10 ranked entries**, when enough works qualify. |
+| How much weight should reviewers, curators, and audiences each have? | **TBD.** |
+| How do we credit source authors and collaborators without treating every credit as a verified account? | **TBD.** |
+| Which subtitle changes can publish immediately, and which need review? | **Tentative:** AI filtering of injurious language. Publication and review rules are still open. |
+| How do new creators receive enough exposure to earn their first independent votes? | **Decision:** the first page selects some works randomly. |
+| Which measures indicate a welcoming, productive community without becoming targets for gaming? | **TBD.** |

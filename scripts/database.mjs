@@ -103,6 +103,13 @@ try {
     await client.query(await readFile('tests/bootstrap.sql', 'utf8'))
     await migrate()
     await client.query(await readFile('tests/isolation.sql', 'utf8'))
+    await client.query('begin')
+    try {
+      await client.query(await readFile('tests/subtitle-history.sql', 'utf8'))
+    } finally {
+      await client.query('rollback')
+    }
+    console.log('Passed: subtitle history, stale edits, restoration, and access control.')
     console.log(
       'Passed: ontology isolation, RLS, subtree eligibility, ownership, moderation, timing, cycles, and localized navigation.',
     )
@@ -176,13 +183,18 @@ try {
     if (!access.readable || access.writable || !access.rls)
       throw new Error('Unexpected curated TV access privileges')
     console.log('Curated TV: RLS enabled, public reads allowed, browser writes denied.')
-  } else if (mode === 'test-tv-subtitles') {
+  } else if (mode === 'test-tv-subtitles' || mode === 'test-subtitle-history') {
     await client.query('begin')
     try {
-      await client.query(await readFile('tests/tv-subtitles.sql', 'utf8'))
-      console.log(
-        'Passed: subtitle persistence, excerpt bounds, author identity, and shared track editing and deletion. Test data rolled back.',
+      await client.query(
+        await readFile(
+          mode === 'test-subtitle-history'
+            ? 'tests/subtitle-history.sql'
+            : 'tests/tv-subtitles.sql',
+          'utf8',
+        ),
       )
+      console.log('Passed: subtitle checks (' + mode + '). Test data rolled back.')
     } finally {
       await client.query('rollback')
     }
