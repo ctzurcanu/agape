@@ -250,3 +250,9 @@ Decisions and open questions recorded on **2026-09-13**:
 | Which subtitle changes can publish immediately, and which need review? | **Tentative:** AI filtering of injurious language. Publication and review rules are still open. |
 | How do new creators receive enough exposure to earn their first independent votes? | **Decision:** the first page selects some works randomly. |
 | Which measures indicate a welcoming, productive community without becoming targets for gaming? | **TBD.** |
+
+## Subtitle studio implementation (2026-09-13)
+
+The manual editor now covers TV excerpts and full verified creator videos: side-by-side cue list/video, millisecond timestamps, playback speed, pause while typing, cue looping, a zoomable draggable cue timeline, keyboard edge trimming, split/merge, undo/redo, local draft recovery, Markdown/link preview, search/replace, bulk time shifting, alternative-track copying, and SRT/WebVTT import/export. Publication is atomic and revision-checked, with explicit conflict comparison and recovery through history. A creator can supply a local audio file to render a waveform without uploading it.
+
+YouTube parity is still a target, not a completed claim: automatic speech transcription, transcript-to-audio alignment, automatic translation, and direct retrieval of YouTube caption tracks are not implemented. The embedded player does not expose source audio to the editor; those workflows need a creator-provided media source and a transcription/alignment service. The private Studio reference returned an error during inspection; the manual workflow was cross-checked against https://support.google.com/youtube/answer/2734796.

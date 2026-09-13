@@ -66,3 +66,25 @@ do $$ begin
  exception when insufficient_privilege then null; end;
 end $$;
 reset role;
+-- A failed multi-cue publish must not leave earlier edits applied.
+set local role authenticated;
+do $$ begin
+ begin
+  perform agape.publish_subtitles('curated','ac000000-0000-4000-8000-000000000004','version1','en', '[
+   {"operation":"update","id":"ac000000-0000-4000-8000-000000000005","expected":5,"start_seconds":30,"end_seconds":35,"markdown":"Must roll back"},
+   {"operation":"update","id":"ac000000-0000-4000-8000-000000000005","expected":1,"start_seconds":30,"end_seconds":35,"markdown":"Stale"}
+  ]');
+  raise exception 'Conflicting batch accepted';
+ exception when serialization_failure then null; end;
+ if not exists(select 1 from agape.tv_subtitle_cue where id='ac000000-0000-4000-8000-000000000005' and revision=5 and markdown='Original') then raise exception 'Batch was partially applied'; end if;
+ perform agape.publish_subtitles('curated','ac000000-0000-4000-8000-000000000004','version1','en', '[
+  {"operation":"update","id":"ac000000-0000-4000-8000-000000000005","expected":5,"start_seconds":30,"end_seconds":35,"markdown":"Batch updated"},
+  {"operation":"insert","id":"ac000000-0000-4000-8000-000000000007","start_seconds":35,"end_seconds":40,"markdown":"Batch added"}
+ ]');
+ if not exists(select 1 from agape.tv_subtitle_cue where id='ac000000-0000-4000-8000-000000000005' and revision=6 and markdown='Batch updated') or not exists(select 1 from agape.tv_subtitle_cue where id='ac000000-0000-4000-8000-000000000007' and revision=1) then raise exception 'Atomic publish failed'; end if;
+ begin
+  perform agape.publish_subtitles('curated','ac000000-0000-4000-8000-000000000004','version2','en', '[{"operation":"delete","id":"ac000000-0000-4000-8000-000000000007","expected":1}]');
+  raise exception 'Cross-track batch accepted';
+ exception when serialization_failure then null; end;
+end $$;
+reset role;

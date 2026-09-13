@@ -1,0 +1,349 @@
+.tv-editor-overlay[role='dialog'] {
+  position: fixed;
+  inset: 10px;
+  z-index: 100;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  overflow: auto;
+  background: var(--paper, #f7f8f1);
+  padding: 14px;
+  border-radius: 12px;
+}
+.tv-editor-overlay .tv-editor-close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 4;
+}
+.subtitle-workspace {
+  clear: both;
+  padding-top: 0;
+  color: var(--ink);
+  padding: 8px;
+}
+.subtitle-workspace button,
+.subtitle-workspace input,
+.subtitle-workspace select {
+  font: inherit;
+}
+.subtitle-workspace button {
+  padding: 7px 11px;
+  font-size: 12px;
+}
+.se-heading,
+.se-toolbar,
+.se-footer,
+.se-timeline-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.se-heading {
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-right: 145px;
+}
+.se-heading h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.3;
+}
+.se-heading small,
+.se-heading [role='status'] {
+  font-size: 12px;
+}
+.se-main {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.1fr);
+  gap: 18px;
+}
+.se-cues {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.se-cue-list {
+  height: 210px;
+  overflow: auto;
+  margin-top: 8px;
+}
+.se-cue {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: inherit;
+  border: 1px solid #88917d55;
+  border-radius: 5px;
+  margin: 0 0 5px;
+}
+.se-cue small,
+.se-cue span {
+  display: block;
+}
+.se-cue span {
+  white-space: pre-wrap;
+  margin-top: 4px;
+}
+.se-cue.selected,
+.se-block.selected {
+  outline: 2px solid #719764;
+  outline-offset: -2px;
+}
+.se-cue.active {
+  border-left: 5px solid #719764;
+}
+.se-warning {
+  color: #a25a18;
+  margin-top: 4px;
+}
+.se-preview {
+  min-width: 0;
+}
+.se-preview .video-frame {
+  width: 100%;
+  aspect-ratio: 16/9;
+  height: auto;
+  max-height: 28vh;
+}
+.se-preview .player-shell {
+  width: 100%;
+}
+.se-toolbar {
+  margin: 5px 0;
+}
+.se-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.se-toolbar input[type='checkbox'] {
+  width: auto;
+}
+.se-toolbar input:not([type='checkbox']):not([type='file']) {
+  width: 145px;
+  padding: 7px;
+  font-size: 12px;
+}
+.se-toolbar input[type='file'] {
+  max-width: 210px;
+}
+.se-toolbar output {
+  font:
+    12px ui-monospace,
+    monospace;
+  font-variant-numeric: tabular-nums;
+}
+.se-timeline-header {
+  justify-content: space-between;
+  font-size: 11px;
+  margin-top: 8px;
+}
+.se-timeline-header label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.se-timeline-header input {
+  width: 110px;
+}
+.se-timeline-scroll {
+  overflow-x: auto;
+  border: 1px solid #88917d66;
+  border-radius: 7px;
+  margin: 5px 0 10px;
+}
+.se-timeline {
+  position: relative;
+  height: 98px;
+  min-width: 100%;
+  touch-action: none;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent calc(10% - 1px),
+    #88917d22 10%
+  );
+}
+.se-scrubber {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  height: 22px;
+}
+.se-ruler {
+  display: flex;
+  justify-content: space-between;
+  font:
+    10px ui-monospace,
+    monospace;
+  padding: 0 3px;
+}
+.se-block {
+  position: absolute;
+  height: 26px;
+  min-width: 5px;
+  background: #cbdcbb;
+  border: 1px solid #719764;
+  border-radius: 4px;
+  display: flex;
+  color: #20321d;
+  overflow: hidden;
+  cursor: grab;
+}
+.se-block button {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  min-width: 6px;
+  cursor: ew-resize;
+}
+.se-block .se-block-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  cursor: grab;
+}
+.se-block button[data-edge] {
+  background: #71976488;
+}
+.se-playhead {
+  position: absolute;
+  top: 42px;
+  bottom: 0;
+  width: 1px;
+  background: #d65445;
+  pointer-events: none;
+}
+.se-edit,
+.se-tools fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  margin: 0;
+}
+.se-text-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.se-text-row textarea {
+  width: 100%;
+  height: 76px;
+  min-height: 60px;
+  resize: vertical;
+  font-size: 15px;
+}
+.se-text-preview {
+  background: #171c17;
+  color: white;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 16px;
+  white-space: pre-wrap;
+}
+.se-text-preview p {
+  margin: 0;
+}
+.se-text-preview a {
+  color: #bcdaf8;
+}
+.se-tools {
+  border-top: 1px solid #88917d55;
+  padding: 8px 0;
+  font-size: 12px;
+}
+.se-footer {
+  justify-content: space-between;
+  font-size: 12px;
+}
+.se-tools .subtitle-history {
+  max-height: 260px;
+  overflow: auto;
+}
+@media (prefers-color-scheme: dark) {
+  .tv-editor-overlay[role='dialog'] {
+    background: #151c17;
+  }
+  .se-block {
+    background: #31492c;
+    color: #edf6e6;
+  }
+  .se-warning {
+    color: #e4b57e;
+  }
+}
+@media (max-width: 700px) {
+  .tv-editor-overlay[role='dialog'] {
+    inset: 3px;
+    padding: 7px;
+  }
+  .se-main {
+    grid-template-columns: 1fr;
+  }
+  .se-preview {
+    grid-row: 1;
+  }
+  .se-cue-list {
+    height: 150px;
+  }
+  .se-text-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.subtitle-workspace .notice {
+  padding: 8px;
+  margin: 5px 0;
+  font-size: 12px;
+}
+
+.se-waveform {
+  font-size: 12px;
+  margin: 5px 0;
+}
+.se-waveform svg {
+  display: block;
+  width: 100%;
+  height: 60px;
+  color: #719764;
+  cursor: crosshair;
+}
+
+@media (min-width: 701px) {
+  .se-main {
+    height: clamp(160px, 27vh, 260px);
+  }
+  .se-cue-list {
+    height: auto;
+    flex: 1;
+  }
+  .se-preview .video-frame {
+    max-height: calc(27vh - 46px);
+  }
+  .se-timeline {
+    height: 98px;
+  }
+  .se-text-row textarea {
+    height: 60px;
+  }
+}
+.se-toolbar button {
+  padding: 5px 8px;
+}
+.se-conflicts {
+  max-height: 200px;
+  overflow: auto;
+  border: 1px solid #c48748;
+  padding: 8px;
+}
+.se-conflicts article {
+  border-bottom: 1px solid #8885;
+}

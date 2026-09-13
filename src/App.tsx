@@ -31,6 +31,7 @@ import {
   type VideoDetail,
 } from './api'
 import { Player } from './Player'
+import { SubtitleEditor } from './SubtitleEditor'
 import { Markdown } from './Markdown'
 import { timeLabel, videoId, programTimeline, programSeek } from './utils'
 
@@ -922,44 +923,6 @@ function TVSubtitleEditor({
 }) {
   const { session, locale, signIn } = useApp()
   const work = useWork()
-  const draftKey = `agape.subtitle-draft:${session?.user.id || 'guest'}:${clip.curated ? clip.id : clip.video_id}:${track}:${locale}`
-  const [draft] = useState(() => {
-    try {
-      const value = JSON.parse(localStorage.getItem(draftKey) || '{}')
-      return value && typeof value === 'object'
-        ? (value as {
-            start?: string
-            end?: string
-            text?: string
-            editing?: string
-            revision?: number
-          })
-        : {}
-    } catch {
-      return {}
-    }
-  })
-  const [start, setStart] = useState(draft.start ?? String(clip.start_seconds))
-  const [end, setEnd] = useState(
-    draft.end ?? String(Math.min(Number(clip.end_seconds), Number(clip.start_seconds) + 5)),
-  )
-  const [text, setText] = useState(draft.text ?? '')
-  const [editing, setEditing] = useState<string | undefined>(draft.editing)
-  const [expectedRevision, setExpectedRevision] = useState<number | undefined>(draft.revision)
-  const [draftStored, setDraftStored] = useState(false)
-  useEffect(() => {
-    try {
-      if (text || editing)
-        localStorage.setItem(
-          draftKey,
-          JSON.stringify({ start, end, text, editing, revision: expectedRevision }),
-        )
-      else localStorage.removeItem(draftKey)
-      setDraftStored(Boolean(text || editing))
-    } catch {
-      setDraftStored(false)
-    }
-  }, [draftKey, start, end, text, editing, expectedRevision])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyRevision, setHistoryRevision] = useState(0)
   const source = clip.curated ? 'curated' : 'creator'
@@ -1000,242 +963,90 @@ function TVSubtitleEditor({
     [clip.id, session?.user.id],
   )
   return (
-    <details open className="panel tv-subtitle-editor">
-      <summary>Edit {track.replace('version', 'version ')} subtitles</summary>
-      <p>
-        Timed subtitles in {locale === 'fr' ? 'French' : 'English'}. Use **bold**, *italic*, and
-        [link text](https://example.com). Times refer to the original video.
-      </p>
-      <p className="muted">
-        Playback is paused while this editor is open.{' '}
-        {draftStored && 'Your draft is saved on this device.'}
-      </p>
-      <Feedback error={work.error || owner.error || history.error} message={work.message} />
-      {!session ? (
-        <button onClick={() => work.run(signIn)}>Sign in to add subtitles ↗</button>
-      ) : !owner.data ? (
-        <p>Only the verified creator can edit this video's subtitles.</p>
-      ) : (
-        <form
-          className="stack-form"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void work.run(async () => {
-              if (Number(end) <= Number(start)) throw new Error('End must be later than start.')
-              const table = db().from(clip.curated ? 'tv_subtitle_cue' : 'subtitle_cues')
-              const values = {
-                start_seconds: Number(start),
-                end_seconds: Number(end),
-                markdown: text.trim(),
-              }
-              if (editing) {
-                await result(
-                  db().rpc('save_subtitle', {
-                    p_source: source,
-                    p_id: editing,
-                    p_expected: expectedRevision,
-                    p_start: values.start_seconds,
-                    p_end: values.end_seconds,
-                    p_markdown: values.markdown,
-                  }),
-                )
-              } else {
-                await result(
-                  table.insert({
-                    ...values,
-                    locale,
-                    track,
-                    ...(clip.curated ? { fragment_id: clip.id } : { video_id: clip.video_id }),
-                  }),
-                )
-              }
-              setText('')
-              setEditing(undefined)
-              setExpectedRevision(undefined)
-              work.setMessage('Subtitle saved to this version.')
-              saved()
-            })
-          }}
-        >
-          <div className="form-row">
-            <label>
-              Subtitle start (seconds)
-              <input
-                type="number"
-                required
-                step="0.1"
-                min={clip.start_seconds}
-                max={clip.end_seconds}
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
-              />
-            </label>
-            <label>
-              Subtitle end (seconds)
-              <input
-                type="number"
-                required
-                step="0.1"
-                min={clip.start_seconds}
-                max={clip.end_seconds}
-                value={end}
-                onChange={(e) => setEnd(e.target.value)}
-              />
-            </label>
-          </div>
-          <label>
-            Subtitle text
-            <textarea
-              required
-              maxLength={2000}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="**A thought** with a [source](https://example.com)"
-            />
-          </label>
-          {text && (
-            <div className="captions">
-              <Markdown text={text} />
-            </div>
-          )}
-          <button disabled={work.busy || !text.trim()}>
-            {editing ? 'Save changes' : 'Add subtitle'}
-          </button>
-        </form>
-      )}
-      {work.error && (
-        <button className="plain" onClick={() => saved()}>
-          Reload latest subtitles (keep my draft)
-        </button>
-      )}
-      {editing && (
-        <button
-          className="plain"
-          onClick={() => {
-            setEditing(undefined)
-            setExpectedRevision(undefined)
-            setText('')
-          }}
-        >
-          Cancel cue edit
-        </button>
-      )}
-      {cues.map((c) => (
-        <div className="cue" key={c.id}>
-          <span>
-            {timeLabel(c.start_seconds)}–{timeLabel(c.end_seconds)}
-          </span>
-          <Markdown text={c.markdown} />
-          {session && (clip.curated || owner.data) && (
-            <>
-              {
-                <button
-                  className="plain"
-                  onClick={() => {
-                    setEditing(c.id)
-                    setExpectedRevision(c.revision)
-                    setStart(String(c.start_seconds))
-                    setEnd(String(c.end_seconds))
-                    setText(c.markdown)
-                  }}
-                >
-                  Edit subtitle
-                </button>
-              }
-              <button
-                className="plain"
-                disabled={work.busy}
-                onClick={() =>
-                  work.run(async () => {
-                    await result(
-                      db().rpc('save_subtitle', {
-                        p_source: source,
-                        p_id: c.id,
-                        p_expected: c.revision,
-                        p_start: c.start_seconds,
-                        p_end: c.end_seconds,
-                        p_markdown: c.markdown,
-                        p_delete: true,
-                      }),
-                    )
-                    saved()
-                  })
-                }
-              >
-                Remove subtitle
+    <SubtitleEditor
+      key={session?.user.id || 'guest'}
+      clip={clip}
+      track={track}
+      locale={locale}
+      userId={session?.user.id}
+      cues={cues}
+      canEdit={Boolean(session && owner.data)}
+      onSaved={saved}
+      signIn={() => void work.run(signIn)}
+      history={
+        <>
+          <Feedback error={work.error || owner.error || history.error} message={work.message} />
+          {session && owner.data && (
+            <section className="subtitle-history">
+              <button className="plain" onClick={() => setHistoryOpen((v) => !v)}>
+                {historyOpen ? 'Hide history' : 'Revision history & restore'}
               </button>
-            </>
-          )}
-        </div>
-      ))}
-      {session && owner.data && (
-        <section className="subtitle-history">
-          <button className="plain" onClick={() => setHistoryOpen((v) => !v)}>
-            {historyOpen ? 'Hide history' : 'Revision history & restore'}
-          </button>
-          {historyOpen && (
-            <>
-              <p className="muted">
-                Latest 100 changes for this track. Restoring creates a new revision and keeps the
-                history.
-              </p>
-              {!history.data ? (
-                <p>Loading history…</p>
-              ) : !history.data.length ? (
-                <p>No revisions yet.</p>
-              ) : (
-                history.data.map((h) => {
-                  const latest = Math.max(
-                    ...(history.data || [])
-                      .filter((r) => r.cue_id === h.cue_id)
-                      .map((r) => r.revision),
-                  )
-                  return (
-                    <article className="cue" key={h.id}>
-                      <small>
-                        Revision {h.revision} · {h.operation} ·{' '}
-                        {new Date(h.recorded_at).toLocaleString()} ·{' '}
-                        {h.editor
-                          ? h.editor === session.user.id
-                            ? 'You'
-                            : `Contributor ${h.editor.slice(0, 8)}`
-                          : 'Initial content'}
-                      </small>
-                      <p>
-                        {timeLabel(h.snapshot.start_seconds)}–{timeLabel(h.snapshot.end_seconds)}
-                      </p>
-                      <Markdown text={h.snapshot.markdown} />
-                      {(h.revision < latest || h.operation === 'delete') && (
-                        <button
-                          className="plain"
-                          disabled={work.busy}
-                          onClick={() =>
-                            work.run(async () => {
-                              await result(
-                                db().rpc('restore_subtitle', {
-                                  p_history: h.id,
-                                  p_expected: latest,
-                                }),
-                              )
-                              work.setMessage('Subtitle restored as a new revision.')
-                              saved()
-                            })
-                          }
-                        >
-                          {h.operation === 'delete'
-                            ? 'Restore removed subtitle'
-                            : 'Restore this revision'}
-                        </button>
-                      )}
-                    </article>
-                  )
-                })
+              {historyOpen && (
+                <>
+                  <p className="muted">
+                    Latest 100 changes for this track. Restoring creates a new revision and keeps
+                    the history.
+                  </p>
+                  {!history.data ? (
+                    <p>Loading history…</p>
+                  ) : !history.data.length ? (
+                    <p>No revisions yet.</p>
+                  ) : (
+                    history.data.map((h) => {
+                      const latest = Math.max(
+                        ...(history.data || [])
+                          .filter((r) => r.cue_id === h.cue_id)
+                          .map((r) => r.revision),
+                      )
+                      return (
+                        <article className="cue" key={h.id}>
+                          <small>
+                            Revision {h.revision} · {h.operation} ·{' '}
+                            {new Date(h.recorded_at).toLocaleString()} ·{' '}
+                            {h.editor
+                              ? h.editor === session.user.id
+                                ? 'You'
+                                : `Contributor ${h.editor.slice(0, 8)}`
+                              : 'Initial content'}
+                          </small>
+                          <p>
+                            {timeLabel(h.snapshot.start_seconds)}–
+                            {timeLabel(h.snapshot.end_seconds)}
+                          </p>
+                          <Markdown text={h.snapshot.markdown} />
+                          {(h.revision < latest || h.operation === 'delete') && (
+                            <button
+                              className="plain"
+                              disabled={work.busy}
+                              onClick={() =>
+                                work.run(async () => {
+                                  await result(
+                                    db().rpc('restore_subtitle', {
+                                      p_history: h.id,
+                                      p_expected: latest,
+                                    }),
+                                  )
+                                  work.setMessage('Subtitle restored as a new revision.')
+                                  saved()
+                                })
+                              }
+                            >
+                              {h.operation === 'delete'
+                                ? 'Restore removed subtitle'
+                                : 'Restore this revision'}
+                            </button>
+                          )}
+                        </article>
+                      )
+                    })
+                  )}
+                </>
               )}
-            </>
+            </section>
           )}
-        </section>
-      )}
-    </details>
+        </>
+      }
+    />
   )
 }
 
@@ -1397,9 +1208,9 @@ function Studio() {
   const [clipTitle, setClipTitle] = useState(''),
     [start, setStart] = useState('0'),
     [end, setEnd] = useState('30')
-  const [cueStart, setCueStart] = useState('0'),
-    [cueEnd, setCueEnd] = useState('5'),
-    [markdown, setMarkdown] = useState('')
+  const [subtitleTrack, setSubtitleTrack] = useState('version1')
+  const [subtitleOpen, setSubtitleOpen] = useState(false)
+  const [subtitleRevision, setSubtitleRevision] = useState(0)
   const topics = useLoad(
     () =>
       result<Topic[]>(
@@ -1436,7 +1247,7 @@ function Studio() {
               .order('start_seconds'),
           )
         : Promise.resolve([]),
-    [selected, locale, revision],
+    [selected, locale, revision, subtitleRevision],
   )
   const chosen = mine.data?.find((v) => v.video_id === selected)
   const approved = chosen?.video_topics.filter((t) => t.status === 'approved') || []
@@ -1654,92 +1465,52 @@ function Studio() {
               <span className="step">04 / ADD SOME CONTEXT</span>
               <h2>Creator subtitles</h2>
               <p className="muted">
-                Timed text in {locale === 'fr' ? 'French' : 'English'}, shown below the player.
-                Supports **bold**, *italics*, and [links](https://example.com).
+                Edit complete subtitle tracks with a video preview, timeline, import/export, and
+                revision history.
               </p>
-              <form
-                className="stack-form"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  void work.run(async () => {
-                    await result(
-                      db()
-                        .from('subtitle_cues')
-                        .insert({
-                          video_id: selected,
-                          locale,
-                          start_seconds: Number(cueStart),
-                          end_seconds: Number(cueEnd),
-                          markdown,
-                        }),
-                    )
-                    setMarkdown('')
-                    refresh()
-                  })
-                }}
+              <select
+                aria-label="Creator subtitle version"
+                value={subtitleTrack}
+                onChange={(e) => setSubtitleTrack(e.target.value)}
               >
-                <div className="form-row">
-                  <label>
-                    Start (seconds)
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      max={chosen.duration_seconds}
-                      step="0.1"
-                      value={cueStart}
-                      onChange={(e) => setCueStart(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    End (seconds)
-                    <input
-                      required
-                      type="number"
-                      min="0.1"
-                      max={chosen.duration_seconds}
-                      step="0.1"
-                      value={cueEnd}
-                      onChange={(e) => setCueEnd(e.target.value)}
-                    />
-                  </label>
-                </div>
-                <label>
-                  Subtitle text
-                  <textarea
-                    required
-                    maxLength={2000}
-                    value={markdown}
-                    onChange={(e) => setMarkdown(e.target.value)}
-                  />
-                </label>
-                {markdown && (
-                  <div className="markdown-preview">
-                    <Markdown text={markdown} />
-                  </div>
-                )}
-                <button disabled={work.busy}>Add subtitle cue</button>
-              </form>
-              {cues.data?.map((c) => (
-                <div className="cue" key={c.id}>
-                  <small>
-                    {timeLabel(c.start_seconds)}–{timeLabel(c.end_seconds)}
-                  </small>
-                  <Markdown text={c.markdown} />
+                {[1, 2, 3].map((n) => (
+                  <option key={n} value={`version${n}`}>
+                    Version {n} · {locale === 'fr' ? 'French' : 'English'}
+                  </option>
+                ))}
+              </select>
+              <button onClick={() => setSubtitleOpen(true)}>Open subtitle studio</button>
+              {subtitleOpen && (
+                <div
+                  className="tv-editor-overlay"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Edit creator subtitles"
+                >
                   <button
-                    className="plain"
-                    disabled={work.busy}
-                    onClick={() =>
-                      work.run(async () => {
-                        await result(db().from('subtitle_cues').delete().eq('id', c.id))
-                        refresh()
-                      })
-                    }
+                    autoFocus
+                    className="tv-editor-close"
+                    onClick={() => setSubtitleOpen(false)}
                   >
-                    Delete
+                    Close subtitles ×
                   </button>
+                  <TVSubtitleEditor
+                    key={`${selected}-${locale}-${subtitleTrack}`}
+                    track={subtitleTrack}
+                    clip={{
+                      id: selected,
+                      video_id: selected,
+                      title: chosen.title,
+                      video_title: chosen.title,
+                      channel_title: chosen.channel_title,
+                      start_seconds: 0,
+                      end_seconds: chosen.duration_seconds,
+                    }}
+                    cues={cues.data?.filter((c) => c.track === subtitleTrack) || []}
+                    onSaved={() => setSubtitleRevision((n) => n + 1)}
+                  />
                 </div>
-              ))}
+              )}
             </section>
           </div>
         </>

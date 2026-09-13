@@ -52,6 +52,8 @@ export function Player({
   captionMode = 'youtube',
   overlayCaptions = false,
   paused = false,
+  playback,
+  onPlaying,
 }: {
   video: string
   start?: number
@@ -61,6 +63,8 @@ export function Player({
   seek?: { time: number; request: number }
   captionMode?: 'youtube' | 'custom' | 'off'
   overlayCaptions?: boolean
+  playback?: { playing: boolean; rate: number; request: number }
+  onPlaying?: (playing: boolean) => void
   paused?: boolean
   onTime?: (time: number) => void
   onEnd?: () => void
@@ -86,6 +90,16 @@ export function Player({
       player.playVideo()
     }
   }, [paused])
+  const playbackRef = useRef(playback)
+  playbackRef.current = playback
+  const playingCallback = useRef(onPlaying)
+  playingCallback.current = onPlaying
+  useEffect(() => {
+    if (!control.current || !playback) return
+    control.current.setPlaybackRate(playback.rate)
+    if (playback.playing) control.current.playVideo()
+    else control.current.pauseVideo()
+  }, [playback])
   const latestSeek = useRef(seek)
   latestSeek.current = seek
   const progress = useRef(onTime)
@@ -153,10 +167,15 @@ export function Player({
                   startSeconds: latestSeek.current?.time ?? Number(start),
                   ...(end ? { endSeconds: Number(end) } : {}),
                 })
+              if (playbackRef.current) {
+                e.target.setPlaybackRate(playbackRef.current.rate)
+                if (playbackRef.current.playing) e.target.playVideo()
+              }
               timer = window.setInterval(() => {
                 const t = e.target.getCurrentTime()
                 setTime(t)
                 progress.current?.(t)
+                if (end && t < Number(end)) finished = false
                 if (end && t >= Number(end) && e.target.getPlayerState() === YT.PlayerState.PLAYING)
                   finish()
               }, 150)
@@ -164,6 +183,7 @@ export function Player({
             onApiChange: (e) => suppressCaptions(e.target),
             onStateChange: (e) => {
               suppressCaptions(e.target)
+              playingCallback.current?.(e.data === YT.PlayerState.PLAYING)
               if (pauseRequested.current && e.data === YT.PlayerState.PLAYING) {
                 e.target.pauseVideo()
                 return
