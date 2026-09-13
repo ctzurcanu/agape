@@ -169,6 +169,25 @@ Frozen editions cannot be edited; return to **Current TV** to make further chang
 YouTube-hosted video availability and YouTube's own captions remain externally controlled.
 
 Edition links from before named TVs had ids (`#/tv/<topic>?edition=<UUID>`) redirect to
-their TV. Placing one TV in several topics is not implemented. Next stages are
-contribution-based voting budgets and closed ballots against immutable editions, then
-top-10 leaderboards and random discovery, following the decisions in `IDEAS.md`.
+their TV. Placing one TV in several topics is not implemented.
+
+### Voting pilot
+
+Administrators open a ballot for one topic from **Review**: either videos with an approved
+placement in the topic's subtree, or the latest published edition of each named TV whose
+home is in that subtree. Works are fixed when the ballot opens, and video and TV ballots are
+never combined. A ballot needs at least two works; results with fewer than three are
+provisional.
+
+Creators with a video verified in the last 30 days and approved in the ballot's topic subtree
+can recommend works (`#/ballot/<id>`), except their own video or TV. Each recommendation costs
+one point, with an optional explanation, and can be changed or withdrawn until the ballot
+closes. Votes and totals stay sealed, including from administrators, until closing; results
+then show a top-10 board with points, voters, and unnamed explanations. Administrators can
+audit named votes only after closing.
+
+Each creator's budget is `3 × videos with an approved placement + 1 × TV subtitle versions (one
+per TV, track, and day) + 0.25 × comments on others' videos − 1 × fines`, from
+`agape.voting_budget_config`. Points count only while their ballot is open. Fines carry a
+reason the creator sees in the studio. Discovery slots, pairwise ballots, and coefficient
+governance are not implemented.

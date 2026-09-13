@@ -233,8 +233,10 @@ Started on **2026-09-13**, following the progression above:
 
 - **Subtitle authoring foundation:** pause playback while the TV editor is open; keep unfinished cue drafts on the current device; record text, timing, and deletion history; restore previous revisions, including removed cues; reject stale saves and restores rather than overwrite a newer contribution. Curated tracks remain collaboratively editable; verified video tracks remain creator-only.
 - **Named TVs:** several TVs per topic, each with an id, one home topic, an owner, its own excerpt list, subtitle alternatives, and immutable editions published only from a reviewed snapshot. Placement in several topics is not implemented.
-- **Next:** contribution-based voting budgets and ballots, then video/TV leaderboards and random discovery.
-- Voting, budgets, rankings, and AI moderation remain planned features.
+- **Review decisions:** reasons required for rejections, one decision per submission, and submission status visible to creators.
+- **Voting pilot:** administrator-opened topic ballots for videos or TV editions (never combined), 1 point per recommended work with an optional explanation, starter coefficients a = 3, b = 1 (one subtitle version per TV, track, and day), c = 0.25, z = 1, budgets committed only while a ballot is open, votes sealed until close, and a top-10 board with a provisional label below 3 works.
+- **Next:** random discovery slots, time-window leaderboards, and the open questions below (carryover, coefficient governance, voter disclosure).
+- AI moderation remains a planned feature.
 
 ## Questions to decide through small experiments
 

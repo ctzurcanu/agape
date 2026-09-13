@@ -1852,3 +1852,40 @@ body:has(.tv-page) main {
   max-width: 100%;
   border-radius: 8px;
 }
+.topic-ballots {
+  margin-top: 16px;
+}
+.ballot-board {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.ballot-board li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.ballot-board .rank {
+  min-width: 2ch;
+  font-weight: 700;
+  font-size: 1.4em;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+.budget-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.budget-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line, #ddd);
+}
+.budget-table td:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+}
+.voting-budget {
+  margin: 24px 0;
+}

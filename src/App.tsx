@@ -287,6 +287,7 @@ export function App() {
             <Route path="/watch/:video" element={<Watch />} />
             <Route path="/studio" element={<Studio />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/ballot/:ballot" element={<Ballot />} />
             <Route
               path="*"
               element={
@@ -381,6 +382,7 @@ function Explore() {
               Explore the topics ↓
             </button>
           </div>
+          {node && <TopicBallots node={node} />}
         </div>
         {!node && (
           <div className="idea-map" aria-hidden="true">
@@ -1157,6 +1159,592 @@ function TopicTVs({ node }: { node?: string }) {
         </form>
       )}
       <Feedback error={tvs.error || canCreate.error || work.error} />
+      <TopicBallots node={node} />
+    </section>
+  )
+}
+
+type BallotSummary = {
+  id: string
+  kind: string
+  title: string
+  topic: string
+  node_id: string
+  closes_at: string
+  open: boolean
+  entries: number
+}
+type VotingBudget = {
+  videos: number
+  subtitles: number
+  comments: number
+  fines: number
+  a: number
+  b: number
+  c: number
+  z: number
+  earned: number
+  committed: number
+  available: number
+}
+type BallotEntry = {
+  id: string
+  position: number
+  kind: string
+  video_id: string | null
+  edition_id: string | null
+  program_id: string | null
+  title: string
+  channel_title: string | null
+  duration_seconds: number | null
+  published_at: string | null
+  sections: number | null
+  owner_is_me: boolean
+}
+type BallotView = {
+  ballot: {
+    id: string
+    kind: string
+    node_id: string
+    topic: string
+    title: string
+    opens_at: string
+    closes_at: string
+    open: boolean
+    eligible_voters: number
+  }
+  entries: BallotEntry[]
+  me:
+    | (VotingBudget & {
+        eligible: boolean
+        votes: { entry_id: string; explanation: string | null }[]
+      })
+    | null
+  results: {
+    entries: number
+    provisional: boolean
+    voters: number
+    board: {
+      entry_id: string
+      rank: number
+      points: number
+      voters: number
+      explanations: string[]
+    }[]
+  } | null
+}
+function plural(count: number, word: string) {
+  return `${count} ${word}${count === 1 ? '' : 's'}`
+}
+
+// Open and recent creator ballots for a topic subtree (all ballots when no topic is given).
+function TopicBallots({ node }: { node?: string }) {
+  const { revision } = useApp()
+  const ballots = useLoad(
+    () => result<BallotSummary[]>(db().rpc('ballot_list', { p_node: node || null })),
+    [node, revision],
+  )
+  if (!ballots.data?.length) return null
+  return (
+    <section className="topic-ballots" aria-label="Creator ballots">
+      <div className="eyebrow">CREATOR BALLOTS</div>
+      <ul className="submission-list">
+        {ballots.data.slice(0, 5).map((b) => (
+          <li key={b.id}>
+            <Link to={`/ballot/${b.id}`}>{b.title}</Link>{' '}
+            <small>
+              {b.kind === 'video' ? 'Videos' : 'TV editions'} · {plural(b.entries, 'work')} ·{' '}
+              {b.open ? `open until ${new Date(b.closes_at).toLocaleString()}` : 'results'}
+            </small>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function Ballot() {
+  const { ballot } = useParams(),
+    { session, revision, refresh, signIn } = useApp(),
+    work = useWork()
+  const view = useLoad(
+    () => result<BallotView | null>(db().rpc('ballot_view', { p_ballot: ballot })),
+    [ballot, revision, session?.user.id],
+  )
+  const [notes, setNotes] = useState<Record<string, string>>({})
+  if (view.data === null)
+    return (
+      <Empty title="Ballot not found">
+        <Link to="/">Explore topics →</Link>
+      </Empty>
+    )
+  if (!view.data) return <Loading error={view.error} />
+  const { ballot: b, entries, me, results } = view.data
+  const voted = new Map((me?.votes || []).map((v) => [v.entry_id, v]))
+  const byId = new Map(entries.map((e) => [e.id, e]))
+  const link = (e: BallotEntry) =>
+    e.video_id
+      ? watchUrl(e.video_id, b.node_id)
+      : `/tv/program/${e.program_id}?edition=${e.edition_id}`
+  function act(action: 'cast_vote' | 'withdraw_vote', entry: string) {
+    void work.run(async () => {
+      try {
+        await result(
+          db().rpc(
+            action,
+            action === 'cast_vote'
+              ? {
+                  p_ballot: b.id,
+                  p_entry: entry,
+                  p_explanation: notes[entry] ?? voted.get(entry)?.explanation ?? null,
+                }
+              : { p_ballot: b.id, p_entry: entry },
+          ),
+        )
+        work.setMessage(
+          action === 'cast_vote'
+            ? 'Recommendation saved. Only you can see it until the ballot closes.'
+            : 'Recommendation withdrawn; its point is available again.',
+        )
+      } finally {
+        refresh()
+      }
+    })
+  }
+  return (
+    <div className="page">
+      <div className="eyebrow">
+        {b.kind === 'video' ? 'VIDEO BALLOT' : 'TV EDITION BALLOT'} ·{' '}
+        <Link to={topicUrl(b.node_id)}>{b.topic}</Link>
+      </div>
+      <h1>{b.title}</h1>
+      <p className="muted">
+        {b.open
+          ? `Open until ${new Date(b.closes_at).toLocaleString()}. Recommendations and totals stay private until then.`
+          : `Closed ${new Date(b.closes_at).toLocaleString()}.`}{' '}
+        {plural(b.eligible_voters, 'eligible creator')} when it opened.
+      </p>
+      <Feedback {...work} />
+      {results && (
+        <section className="panel">
+          <h2>Results</h2>
+          {results.provisional && (
+            <p className="notice">Provisional — fewer than 3 works were on this ballot.</p>
+          )}
+          <p className="muted">
+            {plural(results.voters, 'creator')} recommended from {plural(results.entries, 'work')}.
+          </p>
+          {!results.board.length ? (
+            <p className="muted">No recommendations were made.</p>
+          ) : (
+            <ol className="ballot-board">
+              {results.board.map((r) => {
+                const e = byId.get(r.entry_id)
+                if (!e) return null
+                return (
+                  <li key={r.entry_id}>
+                    <span className="rank">{r.rank}</span>
+                    <div>
+                      <Link to={link(e)}>
+                        <strong>{e.title}</strong>
+                      </Link>{' '}
+                      <small>
+                        {plural(r.points, 'point')} · {plural(r.voters, 'voter')}
+                      </small>
+                      {r.explanations.map((x, i) => (
+                        <p key={i} className="muted small-copy">
+                          “{x}”
+                        </p>
+                      ))}
+                    </div>
+                  </li>
+                )
+              })}
+            </ol>
+          )}
+        </section>
+      )}
+      {b.open &&
+        (!session ? (
+          <p className="notice">
+            Sign in as a creator to vote.{' '}
+            <button disabled={work.busy} onClick={() => work.run(signIn)}>
+              Join
+            </button>
+          </p>
+        ) : !me?.eligible ? (
+          <p className="notice">
+            Only creators with a recently verified video approved in {b.topic} can vote on this
+            ballot.
+          </p>
+        ) : (
+          <p className="notice">
+            {Number(me.available)} of {Number(me.earned)} voting points available. Each
+            recommendation uses one point until its ballot closes.{' '}
+            <Link to="/studio">How your budget is calculated</Link>
+          </p>
+        ))}
+      <div className="ballot-entries">
+        {entries.map((e) => {
+          const mine = voted.get(e.id)
+          return (
+            <article className="review-item" key={e.id}>
+              <div>
+                {e.video_id && (
+                  <Link to={link(e)}>
+                    <img
+                      className="review-thumbnail"
+                      src={`https://i.ytimg.com/vi/${e.video_id}/mqdefault.jpg`}
+                      alt=""
+                      loading="lazy"
+                    />
+                  </Link>
+                )}
+                <h3>
+                  <Link to={link(e)}>{e.title}</Link>
+                </h3>
+                <p className="muted">
+                  {e.video_id
+                    ? `${e.channel_title} · ${timeLabel(e.duration_seconds || 0)}`
+                    : `Edition published ${dateLabel(e.published_at)} · ${plural(e.sections || 0, 'section')}`}
+                </p>
+              </div>
+              {b.open &&
+                me?.eligible &&
+                (e.owner_is_me ? (
+                  <p className="muted">Your own work</p>
+                ) : (
+                  <div className="stack-form">
+                    <label>
+                      Why you recommend it (optional; shown without your name after closing)
+                      <input
+                        maxLength={500}
+                        value={notes[e.id] ?? mine?.explanation ?? ''}
+                        onChange={(ev) => setNotes({ ...notes, [e.id]: ev.target.value })}
+                      />
+                    </label>
+                    <div className="button-row">
+                      <button
+                        disabled={work.busy || (!mine && Number(me.available) < 1)}
+                        onClick={() => act('cast_vote', e.id)}
+                      >
+                        {mine ? 'Update recommendation' : 'Recommend'}
+                      </button>
+                      {mine && (
+                        <button
+                          className="secondary"
+                          disabled={work.busy}
+                          onClick={() => act('withdraw_vote', e.id)}
+                        >
+                          Withdraw
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </article>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function VotingBudgetPanel() {
+  const { session, revision } = useApp()
+  const budget = useLoad(
+    async () =>
+      session
+        ? result<
+            VotingBudget & {
+              fines_detail: {
+                id: string
+                amount: number
+                reason: string
+                imposed_at: string
+                revoked_at: string | null
+              }[]
+            }
+          >(db().rpc('my_voting_budget'))
+        : null,
+    [session?.user.id, revision],
+  )
+  if (!budget.data) return <Feedback error={budget.error} />
+  const d = budget.data
+  const n = (x: number) => Number(x).toLocaleString()
+  return (
+    <section className="panel voting-budget">
+      <span className="step">YOUR VOTING BUDGET</span>
+      <h2>
+        {n(d.available)} of {n(d.earned)} points available
+      </h2>
+      <p className="muted">
+        Eligible creators recommend works on topic ballots. Each recommendation uses one point until
+        its ballot closes.
+      </p>
+      <div className="table-scroll">
+        <table className="budget-table">
+          <tbody>
+            <tr>
+              <td>Videos with an approved placement</td>
+              <td>
+                {d.videos} × {n(d.a)}
+              </td>
+              <td>{n(d.videos * d.a)}</td>
+            </tr>
+            <tr>
+              <td>TV subtitle versions (one per TV, track and day)</td>
+              <td>
+                {d.subtitles} × {n(d.b)}
+              </td>
+              <td>{n(d.subtitles * d.b)}</td>
+            </tr>
+            <tr>
+              <td>Comments on other creators’ videos</td>
+              <td>
+                {d.comments} × {n(d.c)}
+              </td>
+              <td>{n(d.comments * d.c)}</td>
+            </tr>
+            <tr>
+              <td>Fines</td>
+              <td>
+                {n(d.fines)} × {n(d.z)}
+              </td>
+              <td>−{n(d.fines * d.z)}</td>
+            </tr>
+            <tr>
+              <td>Committed on open ballots</td>
+              <td />
+              <td>−{n(d.committed)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      {d.fines_detail.map((f) => (
+        <p key={f.id} className={f.revoked_at ? 'muted small-copy' : 'notice'}>
+          Fine of {n(f.amount)} on {dateLabel(f.imposed_at)}: {f.reason}
+          {f.revoked_at && ` (revoked ${dateLabel(f.revoked_at)})`}
+        </p>
+      ))}
+    </section>
+  )
+}
+
+function BallotAdmin() {
+  const { locale, revision, refresh } = useApp(),
+    work = useWork()
+  const topics = useLoad(
+    () =>
+      result<Topic[]>(
+        db().from('topic_labels').select('*').eq('locale', locale).order('name').limit(1000),
+      ),
+    [locale],
+  )
+  const ballots = useLoad(
+    () => result<BallotSummary[]>(db().rpc('ballot_list', { p_node: null })),
+    [revision],
+  )
+  const [kind, setKind] = useState('video'),
+    [topic, setTopic] = useState(''),
+    [title, setTitle] = useState(''),
+    [days, setDays] = useState('7')
+  const [audit, setAudit] = useState<{
+    id: string
+    rows: {
+      entry_id: string
+      title: string
+      voter: string | null
+      voter_id: string
+      explanation: string | null
+    }[]
+  }>()
+  const [fineUser, setFineUser] = useState(''),
+    [fineAmount, setFineAmount] = useState('1'),
+    [fineReason, setFineReason] = useState('')
+  return (
+    <section className="panel">
+      <h2>Creator ballots</h2>
+      <p className="muted">
+        A ballot fixes its works when it opens. Votes stay sealed, even here, until it closes.
+      </p>
+      <Feedback {...work} />
+      <Feedback error={topics.error || ballots.error} />
+      <form
+        className="stack-form"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void work.run(async () => {
+            await result(
+              db().rpc('open_ballot', {
+                p_kind: kind,
+                p_node: topic,
+                p_title: title,
+                p_closes_at: new Date(Date.now() + Number(days) * 86400000).toISOString(),
+              }),
+            )
+            setTitle('')
+            work.setMessage('Ballot opened.')
+            refresh()
+          })
+        }}
+      >
+        <div className="form-row">
+          <label>
+            Works
+            <select value={kind} onChange={(e) => setKind(e.target.value)}>
+              <option value="video">Videos</option>
+              <option value="tv">TV editions</option>
+            </select>
+          </label>
+          <label>
+            Topic
+            <select required value={topic} onChange={(e) => setTopic(e.target.value)}>
+              <option value="">Choose a topic</option>
+              {topics.data?.map((t) => (
+                <option key={t.node_id} value={t.node_id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Closes in (days)
+            <input
+              type="number"
+              min="1"
+              max="90"
+              required
+              value={days}
+              onChange={(e) => setDays(e.target.value)}
+            />
+          </label>
+        </div>
+        <label>
+          Title
+          <input
+            required
+            maxLength={160}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <button disabled={work.busy}>Open ballot</button>
+      </form>
+      <ul className="submission-list">
+        {ballots.data?.map((b) => (
+          <li key={b.id}>
+            <Link to={`/ballot/${b.id}`}>{b.title}</Link>{' '}
+            <small>
+              {b.topic} · {b.kind === 'video' ? 'videos' : 'TV editions'} ·{' '}
+              {plural(b.entries, 'work')} ·{' '}
+              {b.open ? `closes ${new Date(b.closes_at).toLocaleString()}` : 'closed'}
+            </small>{' '}
+            {b.open ? (
+              <button
+                className="secondary"
+                disabled={work.busy}
+                onClick={() =>
+                  work.run(async () => {
+                    try {
+                      await result(db().rpc('close_ballot', { p_ballot: b.id }))
+                      work.setMessage('Ballot closed; its results are now public.')
+                    } finally {
+                      refresh()
+                    }
+                  })
+                }
+              >
+                Close now
+              </button>
+            ) : (
+              <button
+                className="plain"
+                disabled={work.busy}
+                onClick={() =>
+                  work.run(async () =>
+                    setAudit({
+                      id: b.id,
+                      rows: await result(db().rpc('ballot_audit', { p_ballot: b.id })),
+                    }),
+                  )
+                }
+              >
+                Audit votes
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {audit && (
+        <div className="notice">
+          <strong>Votes on this ballot</strong>{' '}
+          <button className="plain" onClick={() => setAudit(undefined)}>
+            Hide
+          </button>
+          {!audit.rows.length && <p>No votes.</p>}
+          <ul className="submission-list">
+            {audit.rows.map((r, i) => (
+              <li key={i}>
+                {r.voter || 'Unknown account'} → {r.title}
+                {r.explanation && ` — “${r.explanation}”`} <small>(user id {r.voter_id})</small>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <h3>Fines</h3>
+      <form
+        className="stack-form"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void work.run(async () => {
+            await result(
+              db().rpc('impose_fine', {
+                p_user: fineUser.trim(),
+                p_amount: Number(fineAmount),
+                p_reason: fineReason,
+              }),
+            )
+            setFineReason('')
+            work.setMessage('Fine recorded. The creator sees its reason with their budget.')
+            refresh()
+          })
+        }}
+      >
+        <div className="form-row">
+          <label>
+            Creator user id
+            <input
+              required
+              pattern="[0-9a-fA-F-]{36}"
+              value={fineUser}
+              onChange={(e) => setFineUser(e.target.value)}
+            />
+          </label>
+          <label>
+            Amount
+            <input
+              type="number"
+              min="0.25"
+              step="0.25"
+              required
+              value={fineAmount}
+              onChange={(e) => setFineAmount(e.target.value)}
+            />
+          </label>
+        </div>
+        <label>
+          Reason shown to the creator
+          <textarea
+            required
+            maxLength={1000}
+            value={fineReason}
+            onChange={(e) => setFineReason(e.target.value)}
+          />
+        </label>
+        <button disabled={work.busy}>Impose fine</button>
+      </form>
     </section>
   )
 }
@@ -1665,6 +2253,7 @@ function Studio() {
           <TopicForm parent={null} />
         </section>
       </div>
+      <VotingBudgetPanel />
       {chosen && (
         <>
           <div className="section-heading">
@@ -1999,6 +2588,7 @@ function Admin() {
       </p>
       <Feedback {...work} />
       <TopicForm parent={null} />
+      <BallotAdmin />
       {!data ? (
         <Loading error={error} />
       ) : (

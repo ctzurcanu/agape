@@ -124,6 +124,13 @@ try {
       await client.query('rollback')
     }
     console.log('Passed: review reasons, single decisions, and submission status visibility.')
+    await client.query('begin')
+    try {
+      await client.query(await readFile('tests/voting.sql', 'utf8'))
+    } finally {
+      await client.query('rollback')
+    }
+    console.log('Passed: voting budgets, eligibility, exclusions, sealed ballots, and results.')
     console.log(
       'Passed: ontology isolation, RLS, subtree eligibility, ownership, moderation, timing, cycles, and localized navigation.',
     )
