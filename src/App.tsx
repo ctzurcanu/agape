@@ -9,6 +9,7 @@ import {
 import type { Session } from '@supabase/supabase-js'
 import {
   Link,
+  Navigate,
   NavLink,
   Route,
   Routes,
@@ -282,6 +283,7 @@ export function App() {
             <Route path="/topic/:node" element={<Explore />} />
             <Route path="/tv" element={<TV />} />
             <Route path="/tv/:node" element={<TV />} />
+            <Route path="/tv/program/:program" element={<TV />} />
             <Route path="/watch/:video" element={<Watch />} />
             <Route path="/studio" element={<Studio />} />
             <Route path="/admin" element={<Admin />} />
@@ -637,14 +639,34 @@ function TopicForm({ parent }: { parent: string | null }) {
   )
 }
 
+type ProgramBrowse = Browse & {
+  program?: {
+    id: string
+    title: string
+    node_id: string | null
+    owner_id: string
+    revision: number
+  }
+}
 function TV() {
-  const { node } = useParams(),
-    { locale, revision, session, admin, signIn } = useApp()
+  const { node: topicNode, program } = useParams(),
+    { locale, revision, session, signIn } = useApp()
+  const scope = program ? `program:${program}` : topicNode || 'root'
   const [tvParams] = useSearchParams()
   const editionId = tvParams.get('edition')
+  // Edition links from before TVs had their own ids used the topic route.
+  const legacyEdition = useLoad(
+    async () =>
+      !program && editionId
+        ? result<{ program_id: string } | null>(
+            db().from('tv_edition').select('program_id').eq('id', editionId).maybeSingle(),
+          )
+        : null,
+    [program, editionId],
+  )
   const edition = useLoad(
     async () =>
-      editionId
+      program && editionId
         ? result<{
             title: string
             fragments: import('./api').Fragment[]
@@ -654,11 +676,11 @@ function TV() {
               .from('tv_edition')
               .select('title,fragments,tracks')
               .eq('id', editionId)
-              .eq('selection_key', node || 'root')
+              .eq('program_id', program)
               .single(),
           )
         : null,
-    [editionId, node],
+    [editionId, program],
   )
   const [subtitleTrack, setSubtitleTrack] = useState('version1')
   const [editorOpen, setEditorOpen] = useState(false)
@@ -670,36 +692,44 @@ function TV() {
     return () => window.removeEventListener('keydown', close)
   }, [])
   const programInfo = useLoad(
-    () =>
-      result<{ title: string } | null>(
-        db()
-          .from('tv_program')
-          .select('title')
-          .eq('selection_key', node || 'root')
-          .maybeSingle(),
-      ),
-    [node, editorOpen],
+    async () =>
+      program
+        ? result<{ title: string } | null>(
+            db().from('tv_program').select('title').eq('id', program).maybeSingle(),
+          )
+        : null,
+    [program, editorOpen],
   )
   const publishedEditions = useLoad(
-    () =>
-      result<{ id: string; title: string; published_at: string }[]>(
-        db()
-          .from('tv_edition')
-          .select('id,title,published_at')
-          .eq('selection_key', node || 'root')
-          .order('published_at', { ascending: false })
-          .limit(50),
-      ),
-    [node, editorOpen],
+    async () =>
+      program
+        ? result<{ id: string; title: string; published_at: string }[]>(
+            db()
+              .from('tv_edition')
+              .select('id,title,published_at')
+              .eq('program_id', program)
+              .order('published_at', { ascending: false })
+              .limit(50),
+          )
+        : [],
+    [program, editorOpen],
   )
   useEffect(() => setEditorOpen(false), [editionId])
   const [cueRevision, setCueRevision] = useState(0)
   const [seek, setSeek] = useState<{ time: number; request: number }>()
   const [clipTime, setClipTime] = useState(0)
   const { data, error } = useLoad(
-    () => result<Browse>(db().rpc('tv_browse', { p_node: node || null, p_locale: locale })),
-    [node, locale, revision],
+    () =>
+      program
+        ? result<ProgramBrowse | null>(
+            db().rpc('tv_program_view', { p_program: program, p_locale: locale }),
+          )
+        : result<ProgramBrowse>(
+            db().rpc('tv_browse', { p_node: topicNode || null, p_locale: locale }),
+          ),
+    [program, topicNode, locale, revision],
   )
+  const node = program ? data?.program?.node_id || undefined : topicNode
   const [index, setIndex] = useState(0),
     [round, setRound] = useState(0),
     [started, setStarted] = useState(false)
@@ -709,9 +739,9 @@ function TV() {
     setClipTime(0)
     setRound(0)
     setStarted(false)
-  }, [node, revision, editionId])
+  }, [scope, revision, editionId])
   const [editedSections, setEditedSections] = useState<import('./api').Fragment[]>()
-  useEffect(() => setEditedSections(undefined), [node, revision])
+  useEffect(() => setEditedSections(undefined), [scope, revision])
   const sections = editionId
     ? edition.data?.fragments || []
     : editedSections || data?.fragments || []
@@ -742,15 +772,17 @@ function TV() {
       )
         .filter((c) => c.section_id === clip.id)
         .map((c) => ({ ...c, track: subtitleTrack }))
-    const savedTrack = await result<{ cues: (Cue & { section_id: string })[] } | null>(
-      db()
-        .from('tv_selection_track')
-        .select('cues')
-        .eq('selection_key', node || 'root')
-        .eq('track', subtitleTrack)
-        .eq('locale', locale)
-        .maybeSingle(),
-    )
+    const savedTrack = program
+      ? await result<{ cues: (Cue & { section_id: string })[] } | null>(
+          db()
+            .from('tv_program_track')
+            .select('cues')
+            .eq('program_id', program)
+            .eq('track', subtitleTrack)
+            .eq('locale', locale)
+            .maybeSingle(),
+        )
+      : null
     if (savedTrack)
       return savedTrack.cues
         .filter((c) => c.section_id === clip.id)
@@ -763,10 +795,29 @@ function TV() {
         .eq('locale', locale)
         .order('start_seconds'),
     )
-  }, [clip?.id, clip?.video_id, node, locale, cueRevision, subtitleTrack, editionId, edition.data])
-  if (editionId && !edition.data) return <Loading error={edition.error} />
+  }, [
+    clip?.id,
+    clip?.video_id,
+    program,
+    locale,
+    cueRevision,
+    subtitleTrack,
+    editionId,
+    edition.data,
+  ])
+  if (legacyEdition.data)
+    return (
+      <Navigate replace to={`/tv/program/${legacyEdition.data.program_id}?edition=${editionId}`} />
+    )
+  if (program && data === null)
+    return (
+      <Empty title="TV not found">
+        <Link to="/tv">All Agape TV →</Link>
+      </Empty>
+    )
+  if (program && editionId && !edition.data) return <Loading error={edition.error} />
   if (!data) return <Loading error={error} />
-  if (node && !data.node)
+  if (topicNode && !data.node)
     return (
       <Empty title="Topic not found">
         <Link to="/tv">All Agape TV →</Link>
@@ -794,12 +845,27 @@ function TV() {
     <div className="page tv-page">
       <Breadcrumbs rootOnly topics={node ? data.breadcrumbs : programPath.data || []} />
       {!clip ? (
-        <Empty title="The next great moment could be yours.">
-          <p>There are no approved fragments in this topic yet.</p>
-          <Link className="button" to="/studio">
-            Add your video fragment ↗
-          </Link>
-        </Empty>
+        <>
+          <Empty
+            title={
+              program
+                ? 'This TV has no video sections yet.'
+                : 'The next great moment could be yours.'
+            }
+          >
+            {program ? (
+              <button onClick={() => setEditorOpen(true)}>Edit this TV</button>
+            ) : (
+              <>
+                <p>There are no approved fragments in this topic yet.</p>
+                <Link className="button" to="/studio">
+                  Add your video fragment ↗
+                </Link>
+              </>
+            )}
+          </Empty>
+          {!program && <TopicTVs node={topicNode} />}
+        </>
       ) : (
         <div className="tv-layout">
           <section className="tv-stage">
@@ -876,10 +942,10 @@ function TV() {
                 Skip →
               </button>
             </div>
-            {editionId && (
+            {program && editionId && (
               <p>
                 {edition.data?.title} · Published edition ·{' '}
-                <Link to={`/tv/${node || ''}`}>Current TV</Link>
+                <Link to={`/tv/program/${program}`}>Current TV</Link>
               </p>
             )}
             <div className="tv-tools">
@@ -893,7 +959,7 @@ function TV() {
                     aria-label="TV edition"
                     value={editionId || ''}
                     onChange={(e) => {
-                      window.location.hash = `/tv/${node || ''}${e.target.value ? `?edition=${e.target.value}` : ''}`
+                      window.location.hash = `/tv/program/${program}${e.target.value ? `?edition=${e.target.value}` : ''}`
                     }}
                   >
                     <option value="">Current TV</option>
@@ -927,29 +993,31 @@ function TV() {
                   <option value="off">Off</option>
                 </select>
               </label>
-              <button
-                disabled={Boolean(editionId)}
-                className="tv-edit-icon"
-                aria-label="Edit TV program and subtitles"
-                title="Edit TV program and subtitles"
-                onClick={() => {
-                  if (subtitleTrack === 'off' || subtitleTrack === 'youtube')
-                    setSubtitleTrack('version1')
-                  setEditorOpen(true)
-                }}
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  width="26"
-                  height="26"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
+              {program && (
+                <button
+                  disabled={Boolean(editionId)}
+                  className="tv-edit-icon"
+                  aria-label="Edit TV program and subtitles"
+                  title="Edit TV program and subtitles"
+                  onClick={() => {
+                    if (subtitleTrack === 'off' || subtitleTrack === 'youtube')
+                      setSubtitleTrack('version1')
+                    setEditorOpen(true)
+                  }}
                 >
-                  <path d="m15 4 5 5M4 20l4-1L20 7a2 2 0 0 0-4-4L4 15z" />
-                </svg>
-              </button>
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    width="26"
+                    height="26"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                  >
+                    <path d="m15 4 5 5M4 20l4-1L20 7a2 2 0 0 0-4-4L4 15z" />
+                  </svg>
+                </button>
+              )}
               <select
                 aria-label="Choose program video"
                 value={index}
@@ -962,35 +1030,6 @@ function TV() {
                 ))}
               </select>
             </div>
-            {editorOpen && (
-              <div
-                className="tv-editor-overlay"
-                role="dialog"
-                aria-modal="true"
-                aria-label="Edit alternative subtitles"
-              >
-                <button autoFocus className="tv-editor-close" onClick={() => setEditorOpen(false)}>
-                  Close subtitles ×
-                </button>
-                <TVProgramEditor
-                  key={`${node || 'root'}-${locale}-${subtitleTrack}-${session?.user.id || 'guest'}`}
-                  node={node}
-                  fragments={sections}
-                  track={subtitleTrack}
-                  locale={locale}
-                  userId={session?.user.id}
-                  admin={admin}
-                  signIn={() => void signIn()}
-                  onSaved={() => setCueRevision((n) => n + 1)}
-                  onLayoutSaved={(next) => {
-                    setEditedSections(next)
-                    setIndex(0)
-                    setSeek(undefined)
-                    setClipTime(0)
-                  }}
-                />
-              </div>
-            )}
           </section>
           <aside className="queue">
             <div className="eyebrow">IN THIS LOOP</div>
@@ -1016,10 +1055,109 @@ function TV() {
                 <span>▷</span>
               </button>
             ))}
+            {!program && <TopicTVs node={topicNode} />}
           </aside>
         </div>
       )}
+      {program && editorOpen && (
+        <div
+          className="tv-editor-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit TV program and subtitles"
+        >
+          <button autoFocus className="tv-editor-close" onClick={() => setEditorOpen(false)}>
+            Close editor ×
+          </button>
+          <TVProgramEditor
+            key={`${program}-${locale}-${subtitleTrack}-${session?.user.id || 'guest'}`}
+            program={program}
+            homeNode={data.program?.node_id ?? null}
+            fragments={sections}
+            track={subtitleTrack}
+            locale={locale}
+            userId={session?.user.id}
+            signIn={() => void signIn()}
+            onSaved={() => setCueRevision((n) => n + 1)}
+            onLayoutSaved={(next) => {
+              setEditedSections(next)
+              setIndex(0)
+              setSeek(undefined)
+              setClipTime(0)
+            }}
+          />
+        </div>
+      )}
     </div>
+  )
+}
+
+// Named TVs whose home is this topic; eligible creators and administrators can start one.
+function TopicTVs({ node }: { node?: string }) {
+  const { session, revision } = useApp()
+  const navigate = useNavigate()
+  const work = useWork()
+  const [title, setTitle] = useState('')
+  const tvs = useLoad(
+    () =>
+      result<
+        {
+          id: string
+          title: string
+          sections: number
+          latest_edition: { id: string; published_at: string } | null
+        }[]
+      >(db().rpc('tv_programs', { p_node: node || null })),
+    [node, revision],
+  )
+  const canCreate = useLoad(
+    async () =>
+      session ? result<boolean>(db().rpc('can_create_tv', { p_node: node || null })) : false,
+    [node, session?.user.id],
+  )
+  return (
+    <section className="topic-tvs" aria-label="TVs in this topic">
+      <div className="eyebrow">TVS IN THIS TOPIC</div>
+      {tvs.data?.map((tv) => (
+        <Link key={tv.id} className="queue-item" to={`/tv/program/${tv.id}`}>
+          <span>▷</span>
+          <div>
+            <strong>{tv.title}</strong>
+            <small>
+              {tv.sections} sections
+              {tv.latest_edition &&
+                ` · edition ${new Date(tv.latest_edition.published_at).toLocaleDateString()}`}
+            </small>
+          </div>
+        </Link>
+      ))}
+      {tvs.data && !tvs.data.length && <p>No named TVs here yet.</p>}
+      {canCreate.data && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            void work.run(async () => {
+              const id = await result<string>(
+                db().rpc('create_tv_program', { p_node: node || null, p_title: title }),
+              )
+              navigate(`/tv/program/${id}`)
+            })
+          }}
+        >
+          <label>
+            New TV name{' '}
+            <input
+              required
+              maxLength={160}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </label>
+          <button disabled={work.busy || !title.trim()}>Create a TV</button>
+        </form>
+      )}
+      <Feedback error={tvs.error || canCreate.error || work.error} />
+    </section>
   )
 }
 

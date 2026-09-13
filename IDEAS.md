@@ -232,7 +232,8 @@ All ontology references should point into `agape`. Shared authentication identit
 Started on **2026-09-13**, following the progression above:
 
 - **Subtitle authoring foundation:** pause playback while the TV editor is open; keep unfinished cue drafts on the current device; record text, timing, and deletion history; restore previous revisions, including removed cues; reject stale saves and restores rather than overwrite a newer contribution. Curated tracks remain collaboratively editable; verified video tracks remain creator-only.
-- **Next:** named TV programs and stable published editions, followed by contribution-based voting budgets and ballots, then video/TV leaderboards and random discovery.
+- **Named TVs:** several TVs per topic, each with an id, one home topic, an owner, its own excerpt list, subtitle alternatives, and immutable editions published only from a reviewed snapshot. Placement in several topics is not implemented.
+- **Next:** contribution-based voting budgets and ballots, then video/TV leaderboards and random discovery.
 - Voting, budgets, rankings, and AI moderation remain planned features.
 
 ## Questions to decide through small experiments
@@ -259,6 +260,6 @@ YouTube parity is still a target, not a completed claim: automatic speech transc
 
 ## Whole-program TV authoring (2026-09-13)
 
-TV selections now have one continuous subtitle workspace spanning every video section. The three alternatives are saved as selection-specific editions, independent of source-video captions. Subtitles remain attached to source sections when their order changes; cues crossing a boundary are split into section-attached pieces on publication. Published TV editions have conflict detection and recoverable history. Administrators can add curated video sections and persist an order for the selected topic or root selection from the same studio page. Named programs and immutable program editions remain a later step.
+Each named TV has one continuous subtitle workspace spanning every video section. The three alternatives are saved per TV, independent of source-video captions. Subtitles remain attached to source sections when their order changes; cues crossing a boundary are split into section-attached pieces on publication. TV subtitles have conflict detection and recoverable history. A TV's owner or a site administrator can add, remove, and reorder sections from the same studio page.
 
-Video fragments now occupy a blue timeline lane directly above the two subtitle lanes, sharing zoom and the playhead. Administrators can drag bodies to reorder, drag edges to trim, or use exact source-time fields. Trims are selection-specific and validated against the original video duration; source fragments remain unchanged.
+Video fragments now occupy a blue timeline lane directly above the two subtitle lanes, sharing zoom and the playhead. The owner can drag bodies to reorder, drag edges to trim, or use exact source-time fields. Trims belong to the TV and are validated against the original video duration; source fragments remain unchanged.

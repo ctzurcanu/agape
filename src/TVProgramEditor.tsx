@@ -72,67 +72,57 @@ function SectionTiming({
 }
 
 export function TVProgramEditor({
-  node,
+  program,
+  homeNode,
   fragments,
   track,
   locale,
   userId,
-  admin: siteAdmin,
   signIn,
   onSaved,
   onLayoutSaved,
 }: {
-  node?: string
+  program: string
+  homeNode: string | null
   fragments: Fragment[]
   track: string
   locale: string
   userId?: string
-  admin: boolean
   signIn: () => void
   onSaved: () => void
   onLayoutSaved: (sections: Fragment[]) => void
 }) {
   const [owner, setOwner] = useState(false)
-  const [hasProgram, setHasProgram] = useState(false)
-  const [canClaim, setCanClaim] = useState(false)
   const [programTitle, setProgramTitle] = useState('')
   const [savedTitle, setSavedTitle] = useState('')
   const [editionLink, setEditionLink] = useState('')
   const [review, setReview] = useState<EditionPreview>()
   const [layoutReady, setLayoutReady] = useState(false)
-  const admin = layoutReady && Boolean(userId) && hasProgram && (siteAdmin || owner)
+  // can_edit_tv covers both the TV's owner and site administrators.
+  const admin = layoutReady && Boolean(userId) && owner
   useEffect(() => {
     setOwner(false)
-    setHasProgram(false)
-    setCanClaim(false)
     void Promise.all([
-      result<boolean>(db().rpc('can_edit_tv', { p_node: node || null })),
-      result<boolean>(db().rpc('can_claim_tv', { p_node: node || null })),
+      result<boolean>(db().rpc('can_edit_tv', { p_program: program })),
       result<{ title: string } | null>(
-        db()
-          .from('tv_program')
-          .select('title')
-          .eq('selection_key', node || 'root')
-          .maybeSingle(),
+        db().from('tv_program').select('title').eq('id', program).maybeSingle(),
       ),
     ])
-      .then(([allowed, claimable, program]) => {
+      .then(([allowed, info]) => {
         setOwner(allowed)
-        setCanClaim(claimable)
-        setHasProgram(Boolean(program))
-        setProgramTitle(program?.title || 'Agape TV')
-        setSavedTitle(program?.title || 'Agape TV')
+        setProgramTitle(info?.title || 'Agape TV')
+        setSavedTitle(info?.title || 'Agape TV')
       })
       .catch((e) => setError(e.message))
-  }, [node, userId])
+  }, [program, userId])
   const [sectionTools, setSectionTools] = useState(false)
   const publishedSections = useRef(fragments)
-  const layoutKey = `agape.tv-layout-draft:${node || 'root'}`
+  const layoutKey = `agape.tv-layout-draft:program:${program}`
   const [localLayout, setLocalLayout] = useState(false)
   useEffect(() => {
     let active = true
     void result<{ fragments: Fragment[] }>(
-      db().rpc('tv_browse', { p_node: node || null, p_locale: locale }),
+      db().rpc('tv_program_view', { p_program: program, p_locale: locale }),
     )
       .then((fresh) => {
         if (!active) return
@@ -141,15 +131,12 @@ export function TVProgramEditor({
         try {
           const stored = JSON.parse(localStorage.getItem(layoutKey) || 'null')
           const draft = Array.isArray(stored) ? stored : stored?.sections
+          // Drafts may add or remove sections; the server checks topic membership on save.
           if (
             Array.isArray(draft) &&
-            draft.length === fresh.fragments.length &&
             new Set(draft.map((f) => f.id)).size === draft.length &&
             draft.every(
-              (f: Fragment) =>
-                fresh.fragments.some((x) => x.id === f.id) &&
-                Number.isFinite(f.start_seconds) &&
-                f.end_seconds > f.start_seconds,
+              (f: Fragment) => Number.isFinite(f.start_seconds) && f.end_seconds > f.start_seconds,
             )
           ) {
             next = draft
@@ -186,6 +173,15 @@ export function TVProgramEditor({
     [initial, setInitial] = useState<Cue[]>(),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false)
+  const [pool, setPool] = useState<Fragment[]>([])
+  const [poolChoice, setPoolChoice] = useState('')
+  useEffect(() => {
+    void result<{ fragments: Fragment[] }>(
+      db().rpc('tv_browse', { p_node: homeNode, p_locale: locale }),
+    )
+      .then((topic) => setPool(topic.fragments))
+      .catch(() => {})
+  }, [homeNode, locale])
   const [topicNames, setTopicNames] = useState<{ node_id: string; name: string }[]>([])
   useEffect(() => {
     void result<{ node_id: string; name: string }[]>(
@@ -195,36 +191,25 @@ export function TVProgramEditor({
       .catch(() => {})
   }, [locale])
   const expected = useRef(0),
-    lastRead = useRef(0),
-    orderRevision = useRef(0)
+    lastRead = useRef(0)
   const [url, setUrl] = useState(''),
     [title, setTitle] = useState(''),
     [channel, setChannel] = useState(''),
     [length, setLength] = useState(''),
     [start, setStart] = useState('0'),
     [end, setEnd] = useState('30')
-  const [topic, setTopic] = useState(node || fragments.find((f) => f.node_id)?.node_id || '')
+  const [topic, setTopic] = useState(homeNode || fragments.find((f) => f.node_id)?.node_id || '')
   const [history, setHistory] = useState<
       { id: number; revision: number; cues: Cue[]; recorded_at: string }[]
     >([]),
     [restoreDraft, setRestoreDraft] = useState<Cue[]>()
   useEffect(() => {
     let active = true
-    Promise.all([
-      loadTVTrack(node, fragments, track, locale),
-      result<{ revision: number } | null>(
-        db()
-          .from('tv_selection_order')
-          .select('revision')
-          .eq('selection_key', node || 'root')
-          .maybeSingle(),
-      ),
-    ])
-      .then(([edition, order]) => {
+    loadTVTrack(program, fragments, track, locale)
+      .then((edition) => {
         if (active) {
           expected.current = edition.revision
           lastRead.current = edition.revision
-          orderRevision.current = order?.revision || 0
           setInitial(edition.cues)
         }
       })
@@ -232,9 +217,9 @@ export function TVProgramEditor({
     return () => {
       active = false
     }
-  }, [node, track, locale])
+  }, [program, track, locale])
   async function load(target: string) {
-    const edition = await loadTVTrack(node, sections, target, locale)
+    const edition = await loadTVTrack(program, sections, target, locale)
     if (target === track) lastRead.current = edition.revision
     return edition.cues
   }
@@ -242,7 +227,7 @@ export function TVProgramEditor({
     setReview(undefined)
     expected.current = await result<number>(
       db().rpc('save_tv_track', {
-        p_node: node || null,
+        p_program: program,
         p_track: track,
         p_locale: locale,
         p_expected: expected.current,
@@ -281,7 +266,7 @@ export function TVProgramEditor({
     try {
       await result(
         db().rpc('save_tv_layout', {
-          p_node: node || null,
+          p_program: program,
           p_expected: publishedSections.current,
           p_sections: next,
           p_title: programTitle,
@@ -300,22 +285,6 @@ export function TVProgramEditor({
   async function publishLayout() {
     await saveLayout(sections)
   }
-  async function claim() {
-    if (busy) return
-    setBusy(true)
-    setError('')
-    try {
-      await result(db().rpc('claim_tv_program', { p_node: node || null, p_title: programTitle }))
-      setHasProgram(true)
-      setOwner(true)
-      setCanClaim(false)
-      setSavedTitle(programTitle)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setBusy(false)
-    }
-  }
   async function reviewEdition() {
     if (!admin || busy || localLayout) return
     setBusy(true)
@@ -324,7 +293,7 @@ export function TVProgramEditor({
     try {
       await result(
         db().rpc('save_tv_layout', {
-          p_node: node || null,
+          p_program: program,
           p_expected: publishedSections.current,
           p_sections: sections,
           p_title: programTitle,
@@ -332,7 +301,7 @@ export function TVProgramEditor({
       )
       setSavedTitle(programTitle)
       setReview(
-        await result<EditionPreview>(db().rpc('tv_edition_preview', { p_node: node || null })),
+        await result<EditionPreview>(db().rpc('tv_edition_preview', { p_program: program })),
       )
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -348,11 +317,11 @@ export function TVProgramEditor({
     try {
       const id = await result<string>(
         db().rpc('publish_tv_edition', {
-          p_node: node || null,
+          p_program: program,
           p_fingerprint: review.fingerprint,
         }),
       )
-      setEditionLink(`#/tv/${node || ''}?edition=${id}`)
+      setEditionLink(`#/tv/program/${program}?edition=${id}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -369,6 +338,7 @@ export function TVProgramEditor({
       if (!id) throw new Error('Enter a YouTube video URL.')
       await result(
         db().rpc('add_tv_section', {
+          p_program: program,
           p_node: topic,
           p_video: id,
           p_title: title,
@@ -379,7 +349,7 @@ export function TVProgramEditor({
         }),
       )
       const fresh = await result<{ fragments: Fragment[] }>(
-        db().rpc('tv_browse', { p_node: node || null, p_locale: locale }),
+        db().rpc('tv_program_view', { p_program: program, p_locale: locale }),
       )
       publishedSections.current = fresh.fragments
       setSections(fresh.fragments)
@@ -393,6 +363,7 @@ export function TVProgramEditor({
     }
   }
   const timeline = programTimeline(sections)
+  const available = pool.filter((f) => !sections.some((s) => s.id === f.id))
   return (
     <div>
       <div className="se-toolbar">
@@ -411,14 +382,6 @@ export function TVProgramEditor({
         >
           Save TV
         </button>
-        {!hasProgram && canClaim && (
-          <button
-            disabled={busy || !layoutReady || !programTitle.trim()}
-            onClick={() => void claim()}
-          >
-            Create this TV
-          </button>
-        )}
         <button
           disabled={!admin || busy || localLayout || !programTitle.trim()}
           onClick={() => void reviewEdition()}
@@ -441,8 +404,8 @@ export function TVProgramEditor({
       {review && (
         <div className="notice" role="dialog" aria-label="Review stable edition">
           <p>
-            Freeze “{review.title}” (revision {review.revision}) exactly as listed. Any change
-            made before publishing cancels this review.
+            Freeze “{review.title}” (revision {review.revision}) exactly as listed. Any change made
+            before publishing cancels this review.
           </p>
           <ol>
             {review.sections.map((s) => (
@@ -476,18 +439,14 @@ export function TVProgramEditor({
         <summary>Add video fragments & precise source times</summary>
         <h2>Video sections</h2>
         <p>
-          Reorder with Move earlier / Move later. Set each section’s start and end within its
-          original video, then Save trim. Changes save immediately for this TV selection.
+          Reorder with Move earlier / Move later, or Remove a section. Set each section’s start and
+          end within its original video, then Save trim. Changes save immediately for this TV.
         </p>
         {!admin && (
           <p className="notice">
-            {!userId
-              ? 'Join as the TV owner to save your changes online.'
-              : hasProgram
-                ? 'Only this TV’s owner or a site administrator can save its sequence.'
-                : canClaim
-                  ? 'Create this TV to save its sequence online.'
-                  : 'This TV has no owner yet. A site administrator, or a creator with a verified video approved in this topic, can create it.'}{' '}
+            {userId
+              ? 'Only this TV’s owner or a site administrator can save its sequence.'
+              : 'Join as the TV owner to save your changes online.'}{' '}
             {!userId && <button onClick={signIn}>Join</button>}
           </p>
         )}
@@ -515,6 +474,13 @@ export function TVProgramEditor({
               >
                 Move later
               </button>
+              <button
+                disabled={busy}
+                aria-label={`Remove section ${i + 1}`}
+                onClick={() => void saveLayout(sections.filter((x) => x.id !== f.id))}
+              >
+                Remove
+              </button>
               <SectionTiming
                 section={f}
                 disabled={busy}
@@ -523,6 +489,29 @@ export function TVProgramEditor({
             </li>
           ))}
         </ol>
+        <form
+          className="se-toolbar"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const chosen = available.find((f) => f.id === poolChoice)
+            if (chosen) void saveLayout([...sections, chosen]).then(() => setPoolChoice(''))
+          }}
+        >
+          <label>
+            Add from this topic{' '}
+            <select value={poolChoice} onChange={(e) => setPoolChoice(e.target.value)}>
+              <option value="">
+                {available.length ? 'Choose an excerpt…' : 'Every excerpt is already included'}
+              </option>
+              {available.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.title} ({f.start_seconds}–{f.end_seconds}s)
+                </option>
+              ))}
+            </select>
+          </label>
+          <button disabled={!admin || busy || localLayout || !poolChoice}>Add to TV</button>
+        </form>
         <form
           className="se-toolbar"
           onSubmit={(e) => {
@@ -583,16 +572,15 @@ export function TVProgramEditor({
             <label>
               Agape topic
               <select value={topic} onChange={(e) => setTopic(e.target.value)}>
-                {Array.from(new Set([node, ...sections.map((f) => f.node_id)].filter(Boolean))).map(
-                  (id) => (
-                    <option key={id} value={id}>
-                      {id === node
-                        ? 'This selection’s topic'
-                        : topicNames.find((t) => t.node_id === id)?.name ||
-                          'Selected section topic'}
-                    </option>
-                  ),
-                )}
+                {Array.from(
+                  new Set([homeNode, ...sections.map((f) => f.node_id)].filter(Boolean)),
+                ).map((id) => (
+                  <option key={id} value={id!}>
+                    {id === homeNode
+                      ? 'This selection’s topic'
+                      : topicNames.find((t) => t.node_id === id)?.name || 'Selected section topic'}
+                  </option>
+                ))}
               </select>
             </label>
             <button disabled={busy}>Add video section</button>
@@ -631,7 +619,7 @@ export function TVProgramEditor({
       {initial ? (
         <SubtitleEditor
           clip={{
-            id: `program-${node || 'root'}`,
+            id: `program-${program}`,
             video_id: sections[0]?.video_id || '',
             title: 'TV program',
             video_title: 'TV program',
@@ -670,9 +658,9 @@ export function TVProgramEditor({
                 onClick={() =>
                   void result<typeof history>(
                     db()
-                      .from('tv_selection_history')
+                      .from('tv_program_history')
                       .select('id,revision,cues,recorded_at')
-                      .eq('selection_key', node || 'root')
+                      .eq('program_id', program)
                       .eq('track', track)
                       .eq('locale', locale)
                       .order('revision', { ascending: false })

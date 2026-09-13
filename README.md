@@ -142,11 +142,17 @@ placements. Unapproved topic assignments cannot grant comment rights.
 
 ### TV ownership, saving, and editions
 
-A named TV has an explicit owner in `agape.tv_program`. **Create this TV** claims an
-unowned selection: a site administrator can claim any selection, and a creator can
-claim a topic in whose subtree they have a currently verified, approved video. The root
-TV is administrator-only. Saving requires an existing program. Its creator can save
-reordering, source trims, and additions without an Agape-wide administrator role.
+A topic's TV page (`#/tv/<topic>`) plays the automatic, read-only loop of its approved
+excerpts and lists the named TVs whose home is that topic. A topic can have any number of
+named TVs. Each one (`agape.tv_program`) has its own id and link (`#/tv/program/<id>`),
+one home topic, an owner, and its own excerpt list (`agape.tv_program_item`) with its own
+order, trims, subtitle alternatives, history, and editions.
+
+**Create a TV** is available to site administrators anywhere and to creators with a
+currently verified, approved video in the topic's subtree; the root TV is
+administrator-only. A new TV starts from the topic's current loop. Its owner, or a site
+administrator, can remove, add, reorder, and trim sections. Every section must come from
+the TV's home topic or its descendants, within the original video's duration.
 Sequence edits save atomically and retain a browser draft until acknowledged.
 On reopening the editor, a matching previous draft offers **Publish video changes**;
 this also recognizes the older array-format drafts. Stale saves are rejected.
@@ -159,7 +165,7 @@ Each edition has a permanent `?edition=<UUID>` link and is selectable in the pla
 Frozen editions cannot be edited; return to **Current TV** to make further changes.
 YouTube-hosted video availability and YouTube's own captions remain externally controlled.
 
-This first implementation names existing topic selections; creating multiple independent
-TVs within one topic remains to be added. Next stages are contribution-based voting
-budgets and closed ballots against immutable editions, then top-10 leaderboards and
-random discovery, following the decisions in `IDEAS.md`.
+Edition links from before named TVs had ids (`#/tv/<topic>?edition=<UUID>`) redirect to
+their TV. Placing one TV in several topics is not implemented. Next stages are
+contribution-based voting budgets and closed ballots against immutable editions, then
+top-10 leaderboards and random discovery, following the decisions in `IDEAS.md`.

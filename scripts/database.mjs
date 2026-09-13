@@ -110,6 +110,13 @@ try {
       await client.query('rollback')
     }
     console.log('Passed: subtitle history, stale edits, restoration, and access control.')
+    await client.query('begin')
+    try {
+      await client.query(await readFile('tests/tv-programs.sql', 'utf8'))
+    } finally {
+      await client.query('rollback')
+    }
+    console.log('Passed: named TVs per topic, layouts, subtitles, editions, and permissions.')
     console.log(
       'Passed: ontology isolation, RLS, subtree eligibility, ownership, moderation, timing, cycles, and localized navigation.',
     )

@@ -40,16 +40,16 @@ export function retimeProgramCues(cues: TVCue[], before: Fragment[], after: Frag
   return source.flatMap((c) => programCues(after, [c], c.revision || 0))
 }
 export async function loadTVTrack(
-  node: string | undefined,
+  program: string,
   sections: Fragment[],
   track: string,
   locale: string,
 ) {
   const edition = await result<{ cues: TVCue[]; revision: number } | null>(
     db()
-      .from('tv_selection_track')
+      .from('tv_program_track')
       .select('cues,revision')
-      .eq('selection_key', node || 'root')
+      .eq('program_id', program)
       .eq('track', track)
       .eq('locale', locale)
       .maybeSingle(),
