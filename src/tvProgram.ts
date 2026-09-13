@@ -6,13 +6,14 @@ export function programCues(sections: Fragment[], cues: TVCue[], revision: numbe
   return cues.flatMap((c) => {
     const i = sections.findIndex((f) => f.id === c.section_id),
       s = timeline.segments[i]
-    if (!s) return []
+    if (!s || c.end_seconds <= s.videoStart || c.start_seconds >= s.videoStart + s.duration)
+      return []
     return [
       {
         ...c,
         revision,
-        start_seconds: s.offset + c.start_seconds - s.videoStart,
-        end_seconds: s.offset + c.end_seconds - s.videoStart,
+        start_seconds: s.offset + Math.max(c.start_seconds, s.videoStart) - s.videoStart,
+        end_seconds: s.offset + Math.min(c.end_seconds, s.videoStart + s.duration) - s.videoStart,
       },
     ]
   })

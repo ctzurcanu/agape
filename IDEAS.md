@@ -260,3 +260,5 @@ YouTube parity is still a target, not a completed claim: automatic speech transc
 ## Whole-program TV authoring (2026-09-13)
 
 TV selections now have one continuous subtitle workspace spanning every video section. The three alternatives are saved as selection-specific editions, independent of source-video captions. Subtitles remain attached to source sections when their order changes; cues crossing a boundary are split into section-attached pieces on publication. Published TV editions have conflict detection and recoverable history. Administrators can add curated video sections and persist an order for the selected topic or root selection from the same studio page. Named programs and immutable program editions remain a later step.
+
+Video fragments now occupy a blue timeline lane directly above the two subtitle lanes, sharing zoom and the playhead. Administrators can drag bodies to reorder, drag edges to trim, or use exact source-time fields. Trims are selection-specific and validated against the original video duration; source fragments remain unchanged.

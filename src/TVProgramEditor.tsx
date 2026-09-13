@@ -4,6 +4,65 @@ import { SubtitleEditor } from './SubtitleEditor'
 import { loadTVTrack, programCues, sourceCues } from './tvProgram'
 import { programTimeline, videoId } from './utils'
 
+function SectionTiming({
+  section,
+  disabled,
+  save,
+}: {
+  section: Fragment
+  disabled: boolean
+  save: (start: number, end: number) => void
+}) {
+  const [start, setStart] = useState(String(section.start_seconds)),
+    [end, setEnd] = useState(String(section.end_seconds))
+  useEffect(() => {
+    setStart(String(section.start_seconds))
+    setEnd(String(section.end_seconds))
+  }, [section.start_seconds, section.end_seconds])
+  return (
+    <form
+      className="tv-section-timing"
+      onSubmit={(e) => {
+        e.preventDefault()
+        save(Number(start), Number(end))
+      }}
+    >
+      <label>
+        Source start (s)
+        <input
+          aria-label={`Source start for ${section.title}`}
+          type="number"
+          min="0"
+          required
+          value={start}
+          disabled={disabled}
+          onChange={(e) => setStart(e.target.value)}
+        />
+      </label>
+      <label>
+        Source end (s)
+        <input
+          aria-label={`Source end for ${section.title}`}
+          type="number"
+          min={Number(start) + 1}
+          required
+          value={end}
+          disabled={disabled}
+          onChange={(e) => setEnd(e.target.value)}
+        />
+      </label>
+      <button
+        disabled={
+          disabled ||
+          (Number(start) === section.start_seconds && Number(end) === section.end_seconds)
+        }
+      >
+        Save trim
+      </button>
+    </form>
+  )
+}
+
 export function TVProgramEditor({
   node,
   fragments,
@@ -25,6 +84,7 @@ export function TVProgramEditor({
   onSaved: () => void
   onLayoutSaved: (sections: Fragment[]) => void
 }) {
+  const [sectionTools, setSectionTools] = useState(false)
   const [sections, setSections] = useState(fragments),
     [initial, setInitial] = useState<Cue[]>(),
     [error, setError] = useState(''),
@@ -98,7 +158,8 @@ export function TVProgramEditor({
     const next = [...sections],
       target = index + direction
     if (target < 0 || target >= next.length) return
-    ;[next[index], next[target]] = [next[target], next[index]]
+    const [moving] = next.splice(index, 1)
+    next.splice(target, 0, moving)
     setBusy(true)
     setError('')
     try {
@@ -110,6 +171,32 @@ export function TVProgramEditor({
         }),
       )
       orderRevision.current++
+      setSections(next)
+      onLayoutSaved(next)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function trim(section: Fragment, start: number, end: number) {
+    if (busy) return
+    setBusy(true)
+    setError('')
+    try {
+      await result(
+        db().rpc('trim_tv_section', {
+          p_node: node || null,
+          p_section: section.id,
+          p_expected_start: section.start_seconds,
+          p_expected_end: section.end_seconds,
+          p_start: start,
+          p_end: end,
+        }),
+      )
+      const next = sections.map((f) =>
+        f.id === section.id ? { ...f, start_seconds: start, end_seconds: end } : f,
+      )
       setSections(next)
       onLayoutSaved(next)
     } catch (e) {
@@ -152,8 +239,25 @@ export function TVProgramEditor({
   const timeline = programTimeline(sections)
   return (
     <div>
-      <details className="tv-section-manager">
-        <summary>Video sections · {sections.length} · Add & reorder</summary>
+      <details
+        className="tv-section-manager"
+        open={sectionTools}
+        onToggle={(e) => setSectionTools(e.currentTarget.open)}
+      >
+        <summary>Add video fragments & precise source times</summary>
+        <h2>Video sections</h2>
+        <p>
+          Reorder with Move earlier / Move later. Set each section’s start and end within its
+          original video, then Save trim. Changes save immediately for this TV selection.
+        </p>
+        {!admin && (
+          <p className="notice">
+            {userId
+              ? 'Your account needs Agape administrator access to change the sequence.'
+              : 'Join with your administrator account to add, reorder, and trim sections.'}{' '}
+            {!userId && <button onClick={signIn}>Join</button>}
+          </p>
+        )}
         {error && <p role="alert">{error}</p>}
         <ol>
           {sections.map((f, i) => (
@@ -169,26 +273,32 @@ export function TVProgramEditor({
                 aria-label={`Move section ${i + 1} up`}
                 onClick={() => void move(i, -1)}
               >
-                ↑
+                Move earlier
               </button>
               <button
                 disabled={!admin || busy || i === sections.length - 1}
                 aria-label={`Move section ${i + 1} down`}
                 onClick={() => void move(i, 1)}
               >
-                ↓
+                Move later
               </button>
+              <SectionTiming
+                section={f}
+                disabled={!admin || busy}
+                save={(start, end) => void trim(f, start, end)}
+              />
             </li>
           ))}
         </ol>
-        {admin ? (
-          <form
-            className="se-toolbar"
-            onSubmit={(e) => {
-              e.preventDefault()
-              void add()
-            }}
-          >
+        <form
+          className="se-toolbar"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void add()
+          }}
+        >
+          <fieldset className="se-toolbar tv-add-section" disabled={!admin || busy}>
+            <h3>Add video section</h3>
             <label>
               YouTube URL
               <input required value={url} onChange={(e) => setUrl(e.target.value)} />
@@ -253,14 +363,17 @@ export function TVProgramEditor({
               </select>
             </label>
             <button disabled={busy}>Add video section</button>
-          </form>
-        ) : (
-          <p>
-            Administrators can add and reorder video sections. Signed-in contributors can edit TV
-            subtitles.
-          </p>
-        )}
+          </fieldset>
+        </form>
       </details>
+      <p className="video-lane-help">
+        <button onClick={() => setSectionTools((v) => !v)}>
+          + Add video fragment / precise trim
+        </button>{' '}
+        Video fragments are on the blue lane above the subtitles. Drag a block to reorder; drag its
+        edges to trim. Click a block to preview.{' '}
+        {!admin && 'Join as an administrator to change video sections.'}
+      </p>
       {error && <p role="alert">{error}</p>}
       {initial ? (
         <SubtitleEditor
@@ -281,6 +394,9 @@ export function TVProgramEditor({
           signIn={signIn}
           onSaved={onSaved}
           program={{
+            layoutDisabled: !admin || busy,
+            moveSection: (from, to) => void move(from, to - from),
+            trimSection: (section, start, end) => void trim(section, start, end),
             get revision() {
               return expected.current
             },

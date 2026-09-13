@@ -60,3 +60,10 @@ describe('TV program subtitle timing', () => {
     ).toEqual(projected)
   })
 })
+it('clips subtitles to trimmed sections and excludes cues outside the new range', () => {
+  const trimmed = [{ ...sections[0], start_seconds: 37, end_seconds: 60 }, sections[1]]
+  expect(programCues(trimmed, [cue], 2)[0]).toMatchObject({ start_seconds: 0, end_seconds: 3 })
+  expect(programCues([{ ...sections[0], start_seconds: 50, end_seconds: 60 }], [cue], 2)).toEqual(
+    [],
+  )
+})

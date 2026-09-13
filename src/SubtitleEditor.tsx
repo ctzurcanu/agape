@@ -3,6 +3,7 @@ import { db, result, type Cue, type Fragment } from './api'
 import { Player } from './Player'
 import { programSeek, programTimeline } from './utils'
 import { retimeProgramCues } from './tvProgram'
+import { VideoSectionLane } from './VideoSectionLane'
 import { SubtitleWaveform } from './SubtitleWaveform'
 import { Markdown } from './Markdown'
 import {
@@ -63,6 +64,9 @@ export function SubtitleEditor({
   program,
 }: {
   program?: {
+    layoutDisabled: boolean
+    moveSection: (from: number, to: number) => void
+    trimSection: (section: Fragment, start: number, end: number) => void
     revision: number
     resumeRevision: (revision: number) => void
     sections: Fragment[]
@@ -698,7 +702,7 @@ export function SubtitleEditor({
       </div>
       <div className="se-timeline-scroll">
         <div
-          className="se-timeline"
+          className={`se-timeline ${program ? 'with-video-lane' : ''}`}
           style={{ width: `${zoom * 100}%` }}
           onPointerMove={(e) => {
             const d = drag.current
@@ -743,18 +747,13 @@ export function SubtitleEditor({
             onChange={(e) => jump(+e.target.value)}
           />
           {program && (
-            <div className="se-section-markers">
-              {programTimeline(program.sections).segments.map((s) => (
-                <button
-                  key={program.sections[s.index].id}
-                  style={{ left: `${(s.offset / duration) * 100}%` }}
-                  title={program.sections[s.index].title}
-                  onClick={() => jump(s.offset)}
-                >
-                  {s.index + 1}
-                </button>
-              ))}
-            </div>
+            <VideoSectionLane
+              sections={program.sections}
+              disabled={busy || program.layoutDisabled}
+              onMove={program.moveSection}
+              onTrim={program.trimSection}
+              onSelect={jump}
+            />
           )}
           <div className="se-ruler">
             {Array.from({ length: 11 }, (_, i) => (
@@ -768,7 +767,7 @@ export function SubtitleEditor({
               style={{
                 left: `${((c.start_seconds - start) / duration) * 100}%`,
                 width: `${((c.end_seconds - c.start_seconds) / duration) * 100}%`,
-                top: 42 + (lanes.get(c.id) || 0) * 27,
+                top: (program ? 74 : 42) + (lanes.get(c.id) || 0) * 27,
                 zIndex: selected === c.id ? 2 : 1,
               }}
               onPointerDown={(e) => {

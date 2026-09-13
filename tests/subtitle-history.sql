@@ -126,3 +126,27 @@ do $$ begin
  exception when insufficient_privilege then null; end;
 end $$;
 reset role;
+-- Trimming only changes this selection, never the original fragment.
+set local role authenticated;
+select agape.trim_tv_section('ac000000-0000-4000-8000-000000000003','ac000000-0000-4000-8000-000000000004',30,75,32,60);
+do $$ declare f jsonb; denied boolean:=false; begin
+ select value into f from jsonb_array_elements(agape.tv_browse('ac000000-0000-4000-8000-000000000003','en')->'fragments') where value->>'id'='ac000000-0000-4000-8000-000000000004';
+ if (f->>'start_seconds')::integer<>32 or (f->>'end_seconds')::integer<>60 then raise exception 'Trim not applied'; end if;
+ if not exists(select 1 from agape.curated_tv_fragment where id='ac000000-0000-4000-8000-000000000004' and start_seconds=30 and end_seconds=75) then raise exception 'Trim changed source fragment'; end if;
+ begin
+  perform agape.trim_tv_section('ac000000-0000-4000-8000-000000000003','ac000000-0000-4000-8000-000000000004',32,60,0,121);
+ exception when others then denied:=true; end;
+ if not denied then raise exception 'Out-of-video trim accepted'; end if;
+ begin
+  perform agape.trim_tv_section('ac000000-0000-4000-8000-000000000003','ac000000-0000-4000-8000-000000000004',30,75,0,30);
+  raise exception 'Stale trim accepted';
+ exception when serialization_failure then null; end;
+end $$;
+select set_config('request.jwt.claim.sub','ac000000-0000-4000-8000-000000000002',true);
+do $$ begin
+ begin
+  perform agape.trim_tv_section('ac000000-0000-4000-8000-000000000003','ac000000-0000-4000-8000-000000000004',32,60,0,30);
+  raise exception 'Non-admin trim accepted';
+ exception when insufficient_privilege then null; end;
+end $$;
+reset role;
