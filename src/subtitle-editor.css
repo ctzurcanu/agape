@@ -482,3 +482,22 @@
     color: #edf6ff;
   }
 }
+.video-section-lane {
+  user-select: none;
+}
+.video-section-lane .video-section-block button[data-edge] {
+  flex: 0 0 12px;
+  width: 12px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.video-section-lane .video-section-block button:disabled {
+  cursor: not-allowed;
+}
+.video-section-lane .video-section-block .se-block-text {
+  touch-action: none;
+  cursor: grab;
+}
+.video-section-lane .video-section-block .se-block-text:active {
+  cursor: grabbing;
+}

@@ -29,15 +29,33 @@ export function VideoSectionLane({
     delta: number
     target: number
   }>()
+  const suppressClick = useRef(false)
+  const shownSections = sections.map((f, i) => {
+    if (!preview || preview.index !== i || preview.edge === 'move') return f
+    return {
+      ...f,
+      start_seconds:
+        preview.edge === 'start'
+          ? Math.max(0, Math.min(f.end_seconds - 1, f.start_seconds + preview.delta))
+          : f.start_seconds,
+      end_seconds:
+        preview.edge === 'end'
+          ? Math.max(f.start_seconds + 1, f.end_seconds + preview.delta)
+          : f.end_seconds,
+    }
+  })
+  const shownTimeline = programTimeline(shownSections)
   return (
     <div
       className="video-section-lane"
       aria-label="Video fragments timeline"
+      onDragStart={(e) => e.preventDefault()}
       onPointerMove={(e) => {
         const d = drag.current
         if (!d) return
         d.delta = Math.round(((e.clientX - d.x) / d.width) * timeline.total)
-        const offset = timeline.segments[d.index].offset + d.delta
+        const offset =
+          timeline.segments[d.index].offset + timeline.segments[d.index].duration / 2 + d.delta
         d.target = timeline.segments.findIndex((s) => offset < s.offset + s.duration)
         if (d.target < 0) d.target = sections.length - 1
         setPreview({ ...d })
@@ -45,6 +63,7 @@ export function VideoSectionLane({
       onPointerUp={() => {
         const d = drag.current
         drag.current = null
+        suppressClick.current = Boolean(d && d.delta !== 0)
         setPreview(undefined)
         if (!d) return
         const f = sections[d.index]
@@ -68,27 +87,24 @@ export function VideoSectionLane({
         setPreview(undefined)
       }}
     >
-      {timeline.segments.map((s, i) => {
+      {shownTimeline.segments.map((s, i) => {
         const f = sections[i],
           p = preview?.index === i ? preview : undefined
         let left = s.offset,
           width = s.duration
         if (p?.edge === 'move') left += p.delta
-        else if (p?.edge === 'start') {
-          left += p.delta
-          width -= p.delta
-        } else if (p?.edge === 'end') width += p.delta
         return (
           <div
             key={f.id}
             className={`se-block video-section-block ${preview?.target === i ? 'drop-target' : ''}`}
             style={{
-              left: `${(left / timeline.total) * 100}%`,
-              width: `${(Math.max(1, width) / timeline.total) * 100}%`,
+              left: `${(left / shownTimeline.total) * 100}%`,
+              width: `${(Math.max(1, width) / shownTimeline.total) * 100}%`,
               zIndex: p ? 4 : 2,
             }}
             title={`${i + 1}. ${f.title} · source ${f.start_seconds}–${f.end_seconds}s${p ? ` · ${p.delta > 0 ? '+' : ''}${p.delta}s` : ''}`}
             onPointerDown={(e) => {
+              e.preventDefault()
               e.stopPropagation()
               if (disabled) return
               e.currentTarget.parentElement!.setPointerCapture(e.pointerId)
@@ -127,6 +143,10 @@ export function VideoSectionLane({
               className="se-block-text"
               aria-label={`Video ${i + 1}: ${f.title}. Alt arrows reorder.`}
               onClick={() => {
+                if (suppressClick.current) {
+                  suppressClick.current = false
+                  return
+                }
                 if (!drag.current) onSelect(s.offset)
               }}
               onKeyDown={(e) => {

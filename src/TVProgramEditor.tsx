@@ -85,6 +85,33 @@ export function TVProgramEditor({
   onLayoutSaved: (sections: Fragment[]) => void
 }) {
   const [sectionTools, setSectionTools] = useState(false)
+  const publishedSections = useRef(fragments)
+  const layoutKey = `agape.tv-layout-draft:${node || 'root'}`
+  const [localLayout, setLocalLayout] = useState(false)
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(layoutKey) || 'null')
+      if (
+        Array.isArray(stored) &&
+        stored.length === fragments.length &&
+        stored.every((f: Fragment) => fragments.some((x) => x.id === f.id))
+      ) {
+        setSections(stored)
+        onLayoutSaved(stored)
+        setLocalLayout(true)
+      }
+    } catch {}
+  }, [layoutKey])
+  function keepLocal(next: Fragment[]) {
+    setSections(next)
+    onLayoutSaved(next)
+    setLocalLayout(true)
+    try {
+      localStorage.setItem(layoutKey, JSON.stringify(next))
+    } catch {
+      setError('Local storage unavailable. Keep the editor open to retain sequence changes.')
+    }
+  }
   const [sections, setSections] = useState(fragments),
     [initial, setInitial] = useState<Cue[]>(),
     [error, setError] = useState(''),
@@ -160,6 +187,11 @@ export function TVProgramEditor({
     if (target < 0 || target >= next.length) return
     const [moving] = next.splice(index, 1)
     next.splice(target, 0, moving)
+    if (!admin) {
+      keepLocal(next)
+      setError('Sequence changed locally. Sign in as an administrator to publish video changes.')
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -181,6 +213,25 @@ export function TVProgramEditor({
   }
   async function trim(section: Fragment, start: number, end: number) {
     if (busy) return
+    const duration = await result<{ duration_seconds: number }>(
+      db()
+        .from(section.curated ? 'curated_tv_fragment' : 'videos')
+        .select('duration_seconds')
+        .eq(section.curated ? 'id' : 'video_id', section.curated ? section.id : section.video_id)
+        .single(),
+    ).catch(() => null)
+    if (!duration || start < 0 || end <= start || end > duration.duration_seconds) {
+      setError('Start and end must be within the original video duration.')
+      return
+    }
+    if (!admin) {
+      const next = sections.map((f) =>
+        f.id === section.id ? { ...f, start_seconds: start, end_seconds: end } : f,
+      )
+      keepLocal(next)
+      setError('Section trimmed locally. Sign in as an administrator to publish video changes.')
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -199,6 +250,46 @@ export function TVProgramEditor({
       )
       setSections(next)
       onLayoutSaved(next)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function publishLayout() {
+    if (!admin || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      const fresh = await result<{ fragments: Fragment[] }>(
+        db().rpc('tv_browse', { p_node: node || null, p_locale: locale }),
+      )
+      for (const f of sections) {
+        const old = fresh.fragments.find((x) => x.id === f.id)
+        if (!old) throw new Error('Selection changed. Reload before publishing.')
+        if (old.start_seconds !== f.start_seconds || old.end_seconds !== f.end_seconds)
+          await result(
+            db().rpc('trim_tv_section', {
+              p_node: node || null,
+              p_section: f.id,
+              p_expected_start: old.start_seconds,
+              p_expected_end: old.end_seconds,
+              p_start: f.start_seconds,
+              p_end: f.end_seconds,
+            }),
+          )
+      }
+      await result(
+        db().rpc('save_tv_order', {
+          p_node: node || null,
+          p_expected: orderRevision.current,
+          p_ids: sections.map((f) => f.id),
+        }),
+      )
+      orderRevision.current++
+      publishedSections.current = sections
+      localStorage.removeItem(layoutKey)
+      setLocalLayout(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -269,14 +360,14 @@ export function TVProgramEditor({
                 </small>
               </span>
               <button
-                disabled={!admin || busy || i === 0}
+                disabled={busy || i === 0}
                 aria-label={`Move section ${i + 1} up`}
                 onClick={() => void move(i, -1)}
               >
                 Move earlier
               </button>
               <button
-                disabled={!admin || busy || i === sections.length - 1}
+                disabled={busy || i === sections.length - 1}
                 aria-label={`Move section ${i + 1} down`}
                 onClick={() => void move(i, 1)}
               >
@@ -284,7 +375,7 @@ export function TVProgramEditor({
               </button>
               <SectionTiming
                 section={f}
-                disabled={!admin || busy}
+                disabled={busy}
                 save={(start, end) => void trim(f, start, end)}
               />
             </li>
@@ -366,13 +457,33 @@ export function TVProgramEditor({
           </fieldset>
         </form>
       </details>
+      {localLayout && (
+        <p className="notice">
+          Local sequence draft saved on this device.{' '}
+          {admin && (
+            <button disabled={busy} onClick={() => void publishLayout()}>
+              Publish video changes
+            </button>
+          )}{' '}
+          <button
+            onClick={() => {
+              localStorage.removeItem(layoutKey)
+              setLocalLayout(false)
+              setSections(fragments)
+              onLayoutSaved(fragments)
+            }}
+          >
+            Discard local sequence changes
+          </button>
+        </p>
+      )}
       <p className="video-lane-help">
         <button onClick={() => setSectionTools((v) => !v)}>
           + Add video fragment / precise trim
         </button>{' '}
         Video fragments are on the blue lane above the subtitles. Drag a block to reorder; drag its
         edges to trim. Click a block to preview.{' '}
-        {!admin && 'Join as an administrator to change video sections.'}
+        {!admin && 'Video changes are local until published by an administrator.'}
       </p>
       {error && <p role="alert">{error}</p>}
       {initial ? (
@@ -394,7 +505,7 @@ export function TVProgramEditor({
           signIn={signIn}
           onSaved={onSaved}
           program={{
-            layoutDisabled: !admin || busy,
+            layoutDisabled: busy,
             moveSection: (from, to) => void move(from, to - from),
             trimSection: (section, start, end) => void trim(section, start, end),
             get revision() {
