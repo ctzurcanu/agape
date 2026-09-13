@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { db, result, type Cue, type Fragment } from './api'
 import { Player } from './Player'
+import { programSeek, programTimeline } from './utils'
+import { retimeProgramCues } from './tvProgram'
 import { SubtitleWaveform } from './SubtitleWaveform'
 import { Markdown } from './Markdown'
 import {
@@ -58,7 +60,17 @@ export function SubtitleEditor({
   onSaved,
   history,
   signIn,
+  program,
 }: {
+  program?: {
+    revision: number
+    resumeRevision: (revision: number) => void
+    sections: Fragment[]
+    load: (track: string) => Promise<Cue[]>
+    publish: (base: Cue[], rows: Cue[]) => Promise<Cue[]>
+    acceptLatest: () => void
+    restoreDraft?: Cue[]
+  }
   clip: Fragment
   track: string
   locale: string
@@ -69,18 +81,41 @@ export function SubtitleEditor({
   history: ReactNode
   signIn: () => void
 }) {
+  const previousSections = useRef(program?.sections)
+  useEffect(() => {
+    if (program && previousSections.current && previousSections.current !== program.sections) {
+      const before = previousSections.current
+      setRows((r) => retimeProgramCues(r, before, program.sections))
+      setBase((r) => retimeProgramCues(r, before, program.sections))
+      setUndo([])
+      setRedo([])
+      previousSections.current = program.sections
+    }
+  }, [program?.sections])
+  useEffect(() => {
+    if (program?.restoreDraft) change(program.restoreDraft)
+  }, [program?.restoreDraft])
   const start = Number(clip.start_seconds),
     end = Number(clip.end_seconds),
     duration = end - start
-  const storageKey = `agape.subtitle-workspace:${userId || 'guest'}:${clip.curated ? clip.id : clip.video_id}:${track}:${locale}`
+  const storageKey = `agape.subtitle-workspace:${userId || 'guest'}:${program ? clip.id : clip.curated ? clip.id : clip.video_id}:${track}:${locale}`
   const [initial] = useState(() => {
     try {
       const v = JSON.parse(localStorage.getItem(storageKey) || 'null')
       if (v && Array.isArray(v.rows) && Array.isArray(v.base))
-        return v as { rows: EditableCue[]; base: EditableCue[] }
+        return program && Array.isArray(v.sections)
+          ? {
+              version: typeof v.version === 'number' ? v.version : undefined,
+              rows: retimeProgramCues(v.rows, v.sections, program.sections),
+              base: retimeProgramCues(v.base, v.sections, program.sections),
+            }
+          : (v as { rows: EditableCue[]; base: EditableCue[]; version?: number })
     } catch {}
-    return { rows: cues, base: cues }
+    return { rows: cues, base: cues, version: program?.revision }
   })
+  useEffect(() => {
+    if (program && initial.version !== undefined) program.resumeRevision(initial.version)
+  }, [])
   const [rows, setRows] = useState<EditableCue[]>(initial.rows),
     [base, setBase] = useState<EditableCue[]>(initial.base)
   const [undo, setUndo] = useState<EditableCue[][]>([]),
@@ -152,13 +187,17 @@ export function SubtitleEditor({
   }, [cues])
   useEffect(() => {
     try {
-      if (dirty) localStorage.setItem(storageKey, JSON.stringify({ base, rows }))
+      if (dirty)
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({ base, rows, sections: program?.sections, version: program?.revision }),
+        )
       else localStorage.removeItem(storageKey)
       setStored(dirty)
     } catch {
       setStored(false)
     }
-  }, [rows, base, storageKey, dirty])
+  }, [rows, base, storageKey, dirty, program?.sections])
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
       if (dirty && !stored) e.preventDefault()
@@ -238,14 +277,19 @@ export function SubtitleEditor({
   async function loadLatest() {
     try {
       setLatest(
-        await result<Cue[]>(
-          db()
-            .from(clip.curated ? 'tv_subtitle_cue' : 'subtitle_cues')
-            .select('*')
-            .eq(clip.curated ? 'fragment_id' : 'video_id', clip.curated ? clip.id : clip.video_id)
-            .eq('track', track)
-            .eq('locale', locale),
-        ),
+        program
+          ? await program.load(track)
+          : await result<Cue[]>(
+              db()
+                .from(clip.curated ? 'tv_subtitle_cue' : 'subtitle_cues')
+                .select('*')
+                .eq(
+                  clip.curated ? 'fragment_id' : 'video_id',
+                  clip.curated ? clip.id : clip.video_id,
+                )
+                .eq('track', track)
+                .eq('locale', locale),
+            ),
       )
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -267,24 +311,31 @@ export function SubtitleEditor({
     try {
       if (problems.some((p) => p.errors.length))
         throw new Error('Fix timing and empty text errors before publishing.')
-      await result(
-        db().rpc('publish_subtitles', {
-          p_source: clip.curated ? 'curated' : 'creator',
-          p_context: clip.curated ? clip.id : clip.video_id,
-          p_track: track,
-          p_locale: locale,
-          p_changes: subtitleChanges(base, rows),
-        }),
-      )
-      const fresh = await result<Cue[]>(
-        db()
-          .from(clip.curated ? 'tv_subtitle_cue' : 'subtitle_cues')
-          .select('*')
-          .eq(clip.curated ? 'fragment_id' : 'video_id', clip.curated ? clip.id : clip.video_id)
-          .eq('track', track)
-          .eq('locale', locale)
-          .order('start_seconds'),
-      )
+      const fresh = program
+        ? await program.publish(base, rows)
+        : await (async () => {
+            await result(
+              db().rpc('publish_subtitles', {
+                p_source: clip.curated ? 'curated' : 'creator',
+                p_context: clip.curated ? clip.id : clip.video_id,
+                p_track: track,
+                p_locale: locale,
+                p_changes: subtitleChanges(base, rows),
+              }),
+            )
+            return await result<Cue[]>(
+              db()
+                .from(clip.curated ? 'tv_subtitle_cue' : 'subtitle_cues')
+                .select('*')
+                .eq(
+                  clip.curated ? 'fragment_id' : 'video_id',
+                  clip.curated ? clip.id : clip.video_id,
+                )
+                .eq('track', track)
+                .eq('locale', locale)
+                .order('start_seconds'),
+            )
+          })()
       setRows(fresh)
       setBase(fresh)
       setUndo([])
@@ -311,14 +362,16 @@ export function SubtitleEditor({
   async function copyAlternative() {
     setError('')
     try {
-      const source = await result<Cue[]>(
-        db()
-          .from(clip.curated ? 'tv_subtitle_cue' : 'subtitle_cues')
-          .select('*')
-          .eq(clip.curated ? 'fragment_id' : 'video_id', clip.curated ? clip.id : clip.video_id)
-          .eq('locale', locale)
-          .eq('track', copyTrack),
-      )
+      const source = program
+        ? await program.load(copyTrack)
+        : await result<Cue[]>(
+            db()
+              .from(clip.curated ? 'tv_subtitle_cue' : 'subtitle_cues')
+              .select('*')
+              .eq(clip.curated ? 'fragment_id' : 'video_id', clip.curated ? clip.id : clip.video_id)
+              .eq('locale', locale)
+              .eq('track', copyTrack),
+          )
       if (!source.length) throw new Error('That alternative has no cues.')
       change(source.map((c) => ({ ...c, id: crypto.randomUUID(), revision: undefined })))
       setMessage(
@@ -357,6 +410,37 @@ export function SubtitleEditor({
       setError(e instanceof Error ? e.message : String(e))
     }
   }
+  const previewTarget = program ? programSeek(program.sections, time) : undefined
+  const previewSection = program && previewTarget ? program.sections[previewTarget.index] : clip
+  const previewOffset =
+    program && previewTarget
+      ? programTimeline(program.sections).segments[previewTarget.index].offset
+      : 0
+  const previewCues = program
+    ? rows
+        .filter(
+          (c) =>
+            c.end_seconds > previewOffset &&
+            c.start_seconds <
+              previewOffset + previewSection.end_seconds - previewSection.start_seconds,
+        )
+        .map((c) => ({
+          ...c,
+          start_seconds: c.start_seconds - previewOffset + previewSection.start_seconds,
+          end_seconds: c.end_seconds - previewOffset + previewSection.start_seconds,
+        }))
+    : rows
+  const previewSeek = useMemo(
+    () =>
+      program
+        ? {
+            time:
+              programSeek(program.sections, seek?.time ?? 0)?.time ?? previewSection.start_seconds,
+            request: seek?.request || 0,
+          }
+        : seek,
+    [program?.sections, seek, previewSection.id],
+  )
   function select(c: EditableCue) {
     setSelected(c.id)
     jump(c.start_seconds)
@@ -390,7 +474,7 @@ export function SubtitleEditor({
     >
       <header className="se-heading">
         <div>
-          <h2>Subtitle studio</h2>
+          <h2>{program ? 'TV program studio' : 'Subtitle studio'}</h2>
           <small>
             {track.replace('version', 'Version ')} · {locale === 'fr' ? 'French' : 'English'} ·{' '}
             {rows.length} cues
@@ -420,7 +504,31 @@ export function SubtitleEditor({
           </button>
         </p>
       )}
-      {conflicts.length > 0 && (
+      {program && latest && (
+        <section className="se-conflicts">
+          <p>The whole TV subtitle version is compared together.</p>
+          <button
+            onClick={() => {
+              program.acceptLatest()
+              setBase(latest)
+              change(latest)
+              setLatest(undefined)
+            }}
+          >
+            Use latest published version
+          </button>
+          <button
+            onClick={() => {
+              program.acceptLatest()
+              setBase(latest)
+              setLatest(undefined)
+            }}
+          >
+            Keep my whole draft for next publish
+          </button>
+        </section>
+      )}
+      {!program && conflicts.length > 0 && (
         <section className="se-conflicts" aria-label="Resolve subtitle conflicts">
           <h3>Review conflicting changes</h3>
           {conflicts.map((c) => (
@@ -495,22 +603,40 @@ export function SubtitleEditor({
         </div>
         <div className="se-preview">
           <Player
-            video={clip.video_id}
-            start={start}
-            end={end}
-            cues={rows}
+            key={previewSection.id}
+            video={previewSection.video_id}
+            start={previewSection.start_seconds}
+            end={previewSection.end_seconds}
+            cues={previewCues}
             captionMode="custom"
             overlayCaptions
-            seek={seek}
+            seek={previewSeek}
             playback={playback}
             onPlaying={setPlaying}
             onTime={(t) => {
-              setTime(t)
-              if (loop && cue && t >= cue.end_seconds && playing) jump(cue.start_seconds)
+              const programTime = program
+                ? previewOffset +
+                  Math.max(
+                    0,
+                    Math.min(
+                      previewSection.end_seconds - previewSection.start_seconds,
+                      t - previewSection.start_seconds,
+                    ),
+                  )
+                : t
+              setTime(programTime)
+              if (loop && cue && programTime >= cue.end_seconds && playing) jump(cue.start_seconds)
             }}
             onEnd={() => {
               if (loop && cue) {
                 jump(cue.start_seconds)
+                play(true)
+              } else if (
+                program &&
+                previewTarget &&
+                previewTarget.index < program.sections.length - 1
+              ) {
+                jump(previewOffset + previewSection.end_seconds - previewSection.start_seconds)
                 play(true)
               } else play(false)
             }}
@@ -564,7 +690,10 @@ export function SubtitleEditor({
           />
         </label>
         <small>
-          Drag cue bodies to move; drag their edges to trim. Times are from the source video.
+          Drag cue bodies to move; drag their edges to trim.{' '}
+          {program
+            ? 'Times are from the start of the TV program.'
+            : 'Times are from the source video.'}
         </small>
       </div>
       <div className="se-timeline-scroll">
@@ -613,6 +742,20 @@ export function SubtitleEditor({
             value={Math.min(end, Math.max(start, time))}
             onChange={(e) => jump(+e.target.value)}
           />
+          {program && (
+            <div className="se-section-markers">
+              {programTimeline(program.sections).segments.map((s) => (
+                <button
+                  key={program.sections[s.index].id}
+                  style={{ left: `${(s.offset / duration) * 100}%` }}
+                  title={program.sections[s.index].title}
+                  onClick={() => jump(s.offset)}
+                >
+                  {s.index + 1}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="se-ruler">
             {Array.from({ length: 11 }, (_, i) => (
               <span key={i}>{timestamp(start + (duration * i) / 10).slice(3, 8)}</span>

@@ -347,3 +347,53 @@
 .se-conflicts article {
   border-bottom: 1px solid #8885;
 }
+.se-section-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.se-section-markers button {
+  position: absolute;
+  top: 20px;
+  bottom: 0;
+  width: 1px;
+  padding: 0 2px;
+  border: 0;
+  border-left: 1px dashed #d3a96f;
+  background: transparent;
+  color: #d3a96f;
+  pointer-events: auto;
+  font-size: 9px;
+  border-radius: 0;
+}
+.tv-section-manager {
+  margin: 4px 150px 10px 8px;
+  font-size: 13px;
+}
+.tv-section-manager ol {
+  max-height: 180px;
+  overflow: auto;
+  padding-left: 24px;
+}
+.tv-section-manager li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 3px 0;
+}
+.tv-section-manager li span {
+  flex: 1;
+}
+.tv-section-manager button {
+  padding: 4px 9px;
+}
+.tv-section-manager label {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+}
+@media (max-width: 700px) {
+  .tv-section-manager {
+    margin-right: 140px;
+  }
+}

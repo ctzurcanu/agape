@@ -31,6 +31,7 @@ import {
   type VideoDetail,
 } from './api'
 import { Player } from './Player'
+import { TVProgramEditor } from './TVProgramEditor'
 import { SubtitleEditor } from './SubtitleEditor'
 import { Markdown } from './Markdown'
 import { timeLabel, videoId, programTimeline, programSeek } from './utils'
@@ -638,7 +639,7 @@ function TopicForm({ parent }: { parent: string | null }) {
 
 function TV() {
   const { node } = useParams(),
-    { locale, revision } = useApp()
+    { locale, revision, session, admin, signIn } = useApp()
   const [subtitleTrack, setSubtitleTrack] = useState('version1')
   const [editorOpen, setEditorOpen] = useState(false)
   useEffect(() => {
@@ -665,7 +666,10 @@ function TV() {
     setRound(0)
     setStarted(false)
   }, [node, revision])
-  const clip = data?.fragments[index]
+  const [editedSections, setEditedSections] = useState<import('./api').Fragment[]>()
+  useEffect(() => setEditedSections(undefined), [node, revision])
+  const sections = editedSections || data?.fragments || []
+  const clip = sections[index]
   const programPath = useLoad(async () => {
     if (node || !clip) return [] as Topic[]
     let topic = clip.node_id
@@ -683,20 +687,30 @@ function TV() {
     }
     return topic ? (await browse(topic, locale)).breadcrumbs : []
   }, [node, clip?.id, locale])
-  const cues = useLoad(
-    () =>
-      clip
-        ? result<Cue[]>(
-            db()
-              .from(clip.curated ? 'tv_subtitle_cue' : 'subtitle_cues')
-              .select('*')
-              .eq(clip.curated ? 'fragment_id' : 'video_id', clip.curated ? clip.id : clip.video_id)
-              .eq('locale', locale)
-              .order('start_seconds'),
-          )
-        : Promise.resolve([]),
-    [clip?.id, clip?.video_id, locale, cueRevision, subtitleTrack],
-  )
+  const cues = useLoad(async () => {
+    if (!clip) return [] as Cue[]
+    const edition = await result<{ cues: (Cue & { section_id: string })[] } | null>(
+      db()
+        .from('tv_selection_track')
+        .select('cues')
+        .eq('selection_key', node || 'root')
+        .eq('track', subtitleTrack)
+        .eq('locale', locale)
+        .maybeSingle(),
+    )
+    if (edition)
+      return edition.cues
+        .filter((c) => c.section_id === clip.id)
+        .map((c) => ({ ...c, track: subtitleTrack }))
+    return result<Cue[]>(
+      db()
+        .from(clip.curated ? 'tv_subtitle_cue' : 'subtitle_cues')
+        .select('*')
+        .eq(clip.curated ? 'fragment_id' : 'video_id', clip.curated ? clip.id : clip.video_id)
+        .eq('locale', locale)
+        .order('start_seconds'),
+    )
+  }, [clip?.id, clip?.video_id, node, locale, cueRevision, subtitleTrack])
   if (!data) return <Loading error={error} />
   if (node && !data.node)
     return (
@@ -707,16 +721,16 @@ function TV() {
   function next() {
     setSeek(undefined)
     setClipTime(0)
-    setIndex((i) => (i + 1) % data!.fragments.length)
+    setIndex((i) => (i + 1) % sections.length)
     setRound((n) => n + 1)
   }
-  const timeline = programTimeline(data.fragments)
+  const timeline = programTimeline(sections)
   const segment = timeline.segments[index]
   const elapsed = segment
     ? segment.offset + Math.max(0, Math.min(segment.duration, clipTime - segment.videoStart))
     : 0
   function seekProgram(position: number) {
-    const target = programSeek(data!.fragments, position)
+    const target = programSeek(sections, position)
     if (!target) return
     setIndex(target.index)
     setClipTime(target.time)
@@ -774,10 +788,10 @@ function TV() {
                   {timeline.segments.slice(1).map((s) => (
                     <button
                       type="button"
-                      key={data.fragments[s.index].id}
+                      key={sections[s.index].id}
                       style={{ left: `${(100 * s.offset) / timeline.total}%` }}
-                      title={`${timeLabel(s.offset)} — ${data.fragments[s.index].title}`}
-                      aria-label={`Jump to ${data.fragments[s.index].title} at ${timeLabel(s.offset)}`}
+                      title={`${timeLabel(s.offset)} — ${sections[s.index].title}`}
+                      aria-label={`Jump to ${sections[s.index].title} at ${timeLabel(s.offset)}`}
                       onClick={() => seekProgram(s.offset)}
                     />
                   ))}
@@ -791,7 +805,7 @@ function TV() {
             <div className="now-playing">
               <div>
                 <div className="eyebrow">
-                  NOW PLAYING · {index + 1} / {data.fragments.length}
+                  NOW PLAYING · {index + 1} / {sections.length}
                 </div>
                 <h2>{clip.title}</h2>
                 <p>
@@ -810,7 +824,7 @@ function TV() {
             </div>
             <div className="tv-tools">
               <label>
-                Subtitles{' '}
+                <span className="tv-cc-label">[CC]</span>{' '}
                 <select
                   aria-label="Alternative subtitle track"
                   value={subtitleTrack}
@@ -830,29 +844,33 @@ function TV() {
                 </select>
               </label>
               <button
-                className="plain"
+                className="tv-edit-icon"
+                aria-label="Edit TV program and subtitles"
+                title="Edit TV program and subtitles"
                 onClick={() => {
                   if (subtitleTrack === 'off' || subtitleTrack === 'youtube')
                     setSubtitleTrack('version1')
                   setEditorOpen(true)
                 }}
               >
-                Edit subtitles
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  width="26"
+                  height="26"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                >
+                  <path d="m15 4 5 5M4 20l4-1L20 7a2 2 0 0 0-4-4L4 15z" />
+                </svg>
               </button>
-              <a
-                className="text-link"
-                href={`https://www.youtube.com/watch?v=${clip.video_id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Full video ↗
-              </a>
               <select
                 aria-label="Choose program video"
                 value={index}
                 onChange={(e) => seekProgram(timeline.segments[Number(e.target.value)].offset)}
               >
-                {data.fragments.map((f, i) => (
+                {sections.map((f, i) => (
                   <option key={f.id} value={i}>
                     {i + 1}. {f.title}
                   </option>
@@ -869,19 +887,29 @@ function TV() {
                 <button autoFocus className="tv-editor-close" onClick={() => setEditorOpen(false)}>
                   Close subtitles ×
                 </button>
-                <TVSubtitleEditor
-                  key={`${clip.id}-${locale}-${subtitleTrack}`}
+                <TVProgramEditor
+                  key={`${node || 'root'}-${locale}-${subtitleTrack}`}
+                  node={node}
+                  fragments={sections}
                   track={subtitleTrack}
-                  clip={clip}
-                  cues={cues.data?.filter((c) => c.track === subtitleTrack) || []}
+                  locale={locale}
+                  userId={session?.user.id}
+                  admin={admin}
+                  signIn={() => void signIn()}
                   onSaved={() => setCueRevision((n) => n + 1)}
+                  onLayoutSaved={(next) => {
+                    setEditedSections(next)
+                    setIndex(0)
+                    setSeek(undefined)
+                    setClipTime(0)
+                  }}
                 />
               </div>
             )}
           </section>
           <aside className="queue">
             <div className="eyebrow">IN THIS LOOP</div>
-            {data.fragments.map((f, i) => (
+            {sections.map((f, i) => (
               <button
                 className={`queue-item ${i === index ? 'selected' : ''}`}
                 key={f.id}

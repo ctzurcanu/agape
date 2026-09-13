@@ -88,3 +88,41 @@ do $$ begin
  exception when serialization_failure then null; end;
 end $$;
 reset role;
+-- TV selection captions are independent of source captions, with whole-track revisions.
+set local role authenticated;
+select agape.save_tv_track('ac000000-0000-4000-8000-000000000003','version1','en',0,'[{"id":"ac000000-0000-4000-8000-000000000008","section_id":"ac000000-0000-4000-8000-000000000004","start_seconds":30,"end_seconds":36,"markdown":"TV edition"}]');
+do $$ begin
+ if not exists(select 1 from agape.tv_subtitle_cue where id='ac000000-0000-4000-8000-000000000005' and markdown='Batch updated') then raise exception 'TV changed source captions'; end if;
+ begin
+  perform agape.save_tv_track('ac000000-0000-4000-8000-000000000003','version1','en',0,'[]');
+  raise exception 'Stale TV edition accepted';
+ exception when serialization_failure then null; end;
+ begin
+  perform agape.save_tv_order('ac000000-0000-4000-8000-000000000003',0,array['ac000000-0000-4000-8000-000000000004'::uuid]);
+  raise exception 'Non-admin reorder accepted';
+ exception when insufficient_privilege then null; end;
+ begin
+  perform agape.add_tv_section('ac000000-0000-4000-8000-000000000003','bbbbbbbbbbb','New','Channel',60,0,30);
+  raise exception 'Non-admin section insertion accepted';
+ exception when insufficient_privilege then null; end;
+ if (select count(*) from agape.tv_selection_history where selection_key='ac000000-0000-4000-8000-000000000003')<>1 then raise exception 'TV history missing'; end if;
+end $$;
+reset role;
+insert into agape.members(user_id,role) values('ac000000-0000-4000-8000-000000000001','admin');
+set local role authenticated;
+do $$ declare new_section uuid; program jsonb; begin
+ new_section:=agape.add_tv_section('ac000000-0000-4000-8000-000000000003','bbbbbbbbbbb','New section','Channel',60,0,30);
+ perform agape.save_tv_order('ac000000-0000-4000-8000-000000000003',0,array[new_section,'ac000000-0000-4000-8000-000000000004'::uuid]);
+ program:=agape.tv_browse('ac000000-0000-4000-8000-000000000003','en');
+ if program->'fragments'->0->>'id'<>new_section::text then raise exception 'TV order not applied'; end if;
+ if not exists(select 1 from agape.tv_selection_track where selection_key='ac000000-0000-4000-8000-000000000003' and cues->0->>'section_id'='ac000000-0000-4000-8000-000000000004' and (cues->0->>'start_seconds')::numeric=30) then raise exception 'Reorder detached subtitles'; end if;
+end $$;
+set local role anon;
+do $$ begin
+ if not exists(select 1 from agape.tv_selection_track where selection_key='ac000000-0000-4000-8000-000000000003' and revision=1) then raise exception 'TV edition is not publicly readable'; end if;
+ begin
+  perform agape.save_tv_track('ac000000-0000-4000-8000-000000000003','version1','en',1,'[]');
+  raise exception 'Anonymous TV publish allowed';
+ exception when insufficient_privilege then null; end;
+end $$;
+reset role;
