@@ -69,7 +69,7 @@ export function TVProgramEditor({
   track,
   locale,
   userId,
-  admin,
+  admin: siteAdmin,
   signIn,
   onSaved,
   onLayoutSaved,
@@ -84,30 +84,84 @@ export function TVProgramEditor({
   onSaved: () => void
   onLayoutSaved: (sections: Fragment[]) => void
 }) {
+  const [owner, setOwner] = useState(false)
+  const [programTitle, setProgramTitle] = useState('')
+  const [savedTitle, setSavedTitle] = useState('')
+  const [editionLink, setEditionLink] = useState('')
+  const [layoutReady, setLayoutReady] = useState(false)
+  const admin = layoutReady && Boolean(userId) && (siteAdmin || owner)
+  useEffect(() => {
+    setOwner(false)
+    void Promise.all([
+      result<boolean>(db().rpc('can_edit_tv', { p_node: node || null })),
+      result<{ title: string } | null>(
+        db()
+          .from('tv_program')
+          .select('title')
+          .eq('selection_key', node || 'root')
+          .maybeSingle(),
+      ),
+    ])
+      .then(([allowed, program]) => {
+        setOwner(allowed)
+        setProgramTitle(program?.title || 'Agape TV')
+        setSavedTitle(program?.title || 'Agape TV')
+      })
+      .catch((e) => setError(e.message))
+  }, [node, userId])
   const [sectionTools, setSectionTools] = useState(false)
   const publishedSections = useRef(fragments)
   const layoutKey = `agape.tv-layout-draft:${node || 'root'}`
   const [localLayout, setLocalLayout] = useState(false)
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem(layoutKey) || 'null')
-      if (
-        Array.isArray(stored) &&
-        stored.length === fragments.length &&
-        stored.every((f: Fragment) => fragments.some((x) => x.id === f.id))
-      ) {
-        setSections(stored)
-        onLayoutSaved(stored)
-        setLocalLayout(true)
-      }
-    } catch {}
+    let active = true
+    void result<{ fragments: Fragment[] }>(
+      db().rpc('tv_browse', { p_node: node || null, p_locale: locale }),
+    )
+      .then((fresh) => {
+        if (!active) return
+        publishedSections.current = fresh.fragments
+        let next = fresh.fragments
+        try {
+          const stored = JSON.parse(localStorage.getItem(layoutKey) || 'null')
+          const draft = Array.isArray(stored) ? stored : stored?.sections
+          if (
+            Array.isArray(draft) &&
+            draft.length === fresh.fragments.length &&
+            new Set(draft.map((f) => f.id)).size === draft.length &&
+            draft.every(
+              (f: Fragment) =>
+                fresh.fragments.some((x) => x.id === f.id) &&
+                Number.isFinite(f.start_seconds) &&
+                f.end_seconds > f.start_seconds,
+            )
+          ) {
+            next = draft
+            if (Array.isArray(stored?.base)) publishedSections.current = stored.base
+            setLocalLayout(true)
+          } else if (stored)
+            setError(
+              'A previous sequence draft is still stored, but this selection has changed. It has not been deleted.',
+            )
+        } catch {}
+        setSections(next)
+        onLayoutSaved(next)
+        setLayoutReady(true)
+      })
+      .catch((e) => setError(e.message))
+    return () => {
+      active = false
+    }
   }, [layoutKey])
   function keepLocal(next: Fragment[]) {
     setSections(next)
     onLayoutSaved(next)
     setLocalLayout(true)
     try {
-      localStorage.setItem(layoutKey, JSON.stringify(next))
+      localStorage.setItem(
+        layoutKey,
+        JSON.stringify({ sections: next, base: publishedSections.current }),
+      )
     } catch {
       setError('Local storage unavailable. Keep the editor open to retain sequence changes.')
     }
@@ -187,69 +241,38 @@ export function TVProgramEditor({
     if (target < 0 || target >= next.length) return
     const [moving] = next.splice(index, 1)
     next.splice(target, 0, moving)
-    if (!admin) {
-      keepLocal(next)
-      setError('Sequence changed locally. Sign in as an administrator to publish video changes.')
-      return
-    }
-    setBusy(true)
-    setError('')
-    try {
-      await result(
-        db().rpc('save_tv_order', {
-          p_node: node || null,
-          p_expected: orderRevision.current,
-          p_ids: next.map((f) => f.id),
-        }),
-      )
-      orderRevision.current++
-      setSections(next)
-      onLayoutSaved(next)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setBusy(false)
-    }
+    await saveLayout(next)
   }
   async function trim(section: Fragment, start: number, end: number) {
     if (busy) return
-    const duration = await result<{ duration_seconds: number }>(
-      db()
-        .from(section.curated ? 'curated_tv_fragment' : 'videos')
-        .select('duration_seconds')
-        .eq(section.curated ? 'id' : 'video_id', section.curated ? section.id : section.video_id)
-        .single(),
-    ).catch(() => null)
-    if (!duration || start < 0 || end <= start || end > duration.duration_seconds) {
-      setError('Start and end must be within the original video duration.')
-      return
-    }
-    if (!admin) {
-      const next = sections.map((f) =>
+    await saveLayout(
+      sections.map((f) =>
         f.id === section.id ? { ...f, start_seconds: start, end_seconds: end } : f,
-      )
-      keepLocal(next)
-      setError('Section trimmed locally. Sign in as an administrator to publish video changes.')
+      ),
+    )
+  }
+  async function saveLayout(next: Fragment[]) {
+    if (busy || !layoutReady) return
+    keepLocal(next)
+    if (!admin) {
+      setError('Draft saved on this device. Join as the TV owner to save it online.')
       return
     }
     setBusy(true)
     setError('')
     try {
       await result(
-        db().rpc('trim_tv_section', {
+        db().rpc('save_tv_layout', {
           p_node: node || null,
-          p_section: section.id,
-          p_expected_start: section.start_seconds,
-          p_expected_end: section.end_seconds,
-          p_start: start,
-          p_end: end,
+          p_expected: publishedSections.current,
+          p_sections: next,
+          p_title: programTitle,
         }),
       )
-      const next = sections.map((f) =>
-        f.id === section.id ? { ...f, start_seconds: start, end_seconds: end } : f,
-      )
-      setSections(next)
-      onLayoutSaved(next)
+      setSavedTitle(programTitle)
+      publishedSections.current = next
+      localStorage.removeItem(layoutKey)
+      setLocalLayout(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -257,39 +280,24 @@ export function TVProgramEditor({
     }
   }
   async function publishLayout() {
-    if (!admin || busy) return
+    await saveLayout(sections)
+  }
+  async function publishEdition() {
+    if (!admin || busy || localLayout) return
     setBusy(true)
     setError('')
     try {
-      const fresh = await result<{ fragments: Fragment[] }>(
-        db().rpc('tv_browse', { p_node: node || null, p_locale: locale }),
-      )
-      for (const f of sections) {
-        const old = fresh.fragments.find((x) => x.id === f.id)
-        if (!old) throw new Error('Selection changed. Reload before publishing.')
-        if (old.start_seconds !== f.start_seconds || old.end_seconds !== f.end_seconds)
-          await result(
-            db().rpc('trim_tv_section', {
-              p_node: node || null,
-              p_section: f.id,
-              p_expected_start: old.start_seconds,
-              p_expected_end: old.end_seconds,
-              p_start: f.start_seconds,
-              p_end: f.end_seconds,
-            }),
-          )
-      }
       await result(
-        db().rpc('save_tv_order', {
+        db().rpc('save_tv_layout', {
           p_node: node || null,
-          p_expected: orderRevision.current,
-          p_ids: sections.map((f) => f.id),
+          p_expected: publishedSections.current,
+          p_sections: sections,
+          p_title: programTitle,
         }),
       )
-      orderRevision.current++
-      publishedSections.current = sections
-      localStorage.removeItem(layoutKey)
-      setLocalLayout(false)
+      const id = await result<string>(db().rpc('publish_tv_edition', { p_node: node || null }))
+      setSavedTitle(programTitle)
+      setEditionLink(`#/tv/${node || ''}?edition=${id}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -317,6 +325,7 @@ export function TVProgramEditor({
       const fresh = await result<{ fragments: Fragment[] }>(
         db().rpc('tv_browse', { p_node: node || null, p_locale: locale }),
       )
+      publishedSections.current = fresh.fragments
       setSections(fresh.fragments)
       onLayoutSaved(fresh.fragments)
       setUrl('')
@@ -330,6 +339,41 @@ export function TVProgramEditor({
   const timeline = programTimeline(sections)
   return (
     <div>
+      <div className="se-toolbar">
+        <label>
+          TV name{' '}
+          <input
+            value={programTitle}
+            maxLength={160}
+            disabled={!admin || busy}
+            onChange={(e) => setProgramTitle(e.target.value)}
+          />
+        </label>
+        <button
+          disabled={!admin || busy || !programTitle.trim()}
+          onClick={() => void publishLayout()}
+        >
+          Save TV
+        </button>
+        <button
+          disabled={!admin || busy || localLayout || !programTitle.trim()}
+          onClick={() => void publishEdition()}
+        >
+          Publish stable edition
+        </button>
+        <span role="status">
+          {!layoutReady
+            ? 'Loading…'
+            : busy
+              ? 'Saving…'
+              : localLayout
+                ? 'Draft on this device — not saved online'
+                : programTitle !== savedTitle
+                  ? 'Unsaved TV name'
+                  : 'Saved online'}
+        </span>
+        {editionLink && <a href={editionLink}>Watch published edition ↗</a>}
+      </div>
       <details
         className="tv-section-manager"
         open={sectionTools}
@@ -344,8 +388,8 @@ export function TVProgramEditor({
         {!admin && (
           <p className="notice">
             {userId
-              ? 'Your account needs Agape administrator access to change the sequence.'
-              : 'Join with your administrator account to add, reorder, and trim sections.'}{' '}
+              ? 'Only this TV’s owner or a site administrator can save its sequence.'
+              : 'Join as the TV owner to save your changes online.'}{' '}
             {!userId && <button onClick={signIn}>Join</button>}
           </p>
         )}
@@ -388,7 +432,7 @@ export function TVProgramEditor({
             void add()
           }}
         >
-          <fieldset className="se-toolbar tv-add-section" disabled={!admin || busy}>
+          <fieldset className="se-toolbar tv-add-section" disabled={!admin || busy || localLayout}>
             <h3>Add video section</h3>
             <label>
               YouTube URL
@@ -469,8 +513,8 @@ export function TVProgramEditor({
             onClick={() => {
               localStorage.removeItem(layoutKey)
               setLocalLayout(false)
-              setSections(fragments)
-              onLayoutSaved(fragments)
+              setSections(publishedSections.current)
+              onLayoutSaved(publishedSections.current)
             }}
           >
             Discard local sequence changes
@@ -483,7 +527,7 @@ export function TVProgramEditor({
         </button>{' '}
         Video fragments are on the blue lane above the subtitles. Drag a block to reorder; drag its
         edges to trim. Click a block to preview.{' '}
-        {!admin && 'Video changes are local until published by an administrator.'}
+        {!admin && 'Join as the TV owner to save video changes online.'}
       </p>
       {error && <p role="alert">{error}</p>}
       {initial ? (
@@ -505,7 +549,7 @@ export function TVProgramEditor({
           signIn={signIn}
           onSaved={onSaved}
           program={{
-            layoutDisabled: busy,
+            layoutDisabled: busy || !layoutReady,
             moveSection: (from, to) => void move(from, to - from),
             trimSection: (section, start, end) => void trim(section, start, end),
             get revision() {

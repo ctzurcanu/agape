@@ -130,8 +130,8 @@ placements. Unapproved topic assignments cannot grant comment rights.
   redirects are allowed, and the Google authorization URL has been verified with
   PKCE and YouTube read access. The first successful user sign-in has confirmed
   consent and token exchange.
-- Remaining external setup: designate the first Agape administrator and connect
-  a GitHub repository for Pages.
+- GitHub Pages is deployed. Site moderation still needs an explicitly designated
+  administrator; TV creators administer their own programs independently.
 - The initial 18 topics were authored from Christian Tzurcanu’s playlists; no
   creator videos have been imported. Seven curated TV excerpts are stored
   separately in `agape.curated_tv_fragment`. The source links and hierarchy are stored in
@@ -139,3 +139,23 @@ placements. Unapproved topic assignments cannot grant comment rights.
   without overwriting existing ones. English
   and French locales are configured; missing French labels fall back to English.
   Translation jobs are queued independently, but no automatic translator is running.
+
+### TV ownership, saving, and editions
+
+A named TV has an explicit owner in `agape.tv_program`. Its creator can save
+reordering, source trims, and additions without an Agape-wide administrator role.
+Sequence edits save atomically and retain a browser draft until acknowledged.
+On reopening the editor, a matching previous draft offers **Publish video changes**;
+this also recognizes the older array-format drafts. Stale saves are rejected.
+Drafts are scoped to the browser origin: localhost and GitHub Pages have separate storage.
+
+**Save TV** updates the current program. **Publish stable edition** freezes its name,
+ordered source ranges, and all available custom subtitle alternatives and languages.
+Each edition has a permanent `?edition=<UUID>` link and is selectable in the player.
+Frozen editions cannot be edited; return to **Current TV** to make further changes.
+YouTube-hosted video availability and YouTube's own captions remain externally controlled.
+
+This first implementation names existing topic selections; creating multiple independent
+TVs within one topic remains to be added. Next stages are contribution-based voting
+budgets and closed ballots against immutable editions, then top-10 leaderboards and
+random discovery, following the decisions in `IDEAS.md`.

@@ -150,3 +150,37 @@ do $$ begin
  exception when insufficient_privilege then null; end;
 end $$;
 reset role;
+-- A TV owner needs no site-wide role. Layout saves are atomic; editions immutable.
+delete from agape.members where user_id='ac000000-0000-4000-8000-000000000001';
+insert into agape.tv_program(selection_key,owner_id,title) values('ac000000-0000-4000-8000-000000000003','ac000000-0000-4000-8000-000000000001','Named TV');
+select set_config('request.jwt.claim.sub','ac000000-0000-4000-8000-000000000001',true);
+set local role authenticated;
+do $$ declare original jsonb; changed jsonb; eid uuid; denied boolean:=false; begin
+ if agape.is_admin() or not agape.can_edit_tv('ac000000-0000-4000-8000-000000000003') then raise exception 'Owner permissions incorrect'; end if;
+ original:=agape.tv_browse('ac000000-0000-4000-8000-000000000003','en')->'fragments';
+ select jsonb_agg(value order by ordinality desc) into changed from jsonb_array_elements(original) with ordinality;
+ perform agape.save_tv_layout('ac000000-0000-4000-8000-000000000003',original,changed,'My TV');
+ eid:=agape.publish_tv_edition('ac000000-0000-4000-8000-000000000003');
+ perform agape.save_tv_layout('ac000000-0000-4000-8000-000000000003',changed,original,'Next draft');
+ if not exists(select 1 from agape.tv_edition where id=eid and title='My TV' and fragments=changed and jsonb_array_length(tracks)>0) then raise exception 'Edition changed with draft or lost captions'; end if;
+ begin
+  perform agape.save_tv_layout('ac000000-0000-4000-8000-000000000003',changed,original,'Stale');
+  raise exception 'Stale layout accepted';
+ exception when serialization_failure then null; end;
+ begin
+  perform agape.save_tv_layout('ac000000-0000-4000-8000-000000000003',original,jsonb_set(changed,'{0,end_seconds}','999999'),'Bad');
+ exception when others then denied:=true; end;
+ if not denied or agape.tv_browse('ac000000-0000-4000-8000-000000000003','en')->'fragments'<>original then raise exception 'Invalid save was not atomic'; end if;
+ begin
+  update agape.tv_edition set title='Tampered' where id=eid;
+  raise exception 'Edition mutation allowed';
+ exception when insufficient_privilege then null; end;
+end $$;
+select set_config('request.jwt.claim.sub','ac000000-0000-4000-8000-000000000002',true);
+do $$ begin
+ begin
+  perform agape.save_tv_layout('ac000000-0000-4000-8000-000000000003','[]','[]','Other');
+  raise exception 'Non-owner save allowed';
+ exception when insufficient_privilege then null; end;
+end $$;
+reset role;

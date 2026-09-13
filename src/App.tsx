@@ -640,6 +640,26 @@ function TopicForm({ parent }: { parent: string | null }) {
 function TV() {
   const { node } = useParams(),
     { locale, revision, session, admin, signIn } = useApp()
+  const [tvParams] = useSearchParams()
+  const editionId = tvParams.get('edition')
+  const edition = useLoad(
+    async () =>
+      editionId
+        ? result<{
+            title: string
+            fragments: import('./api').Fragment[]
+            tracks: { track: string; locale: string; cues: Cue[] }[]
+          }>(
+            db()
+              .from('tv_edition')
+              .select('title,fragments,tracks')
+              .eq('id', editionId)
+              .eq('selection_key', node || 'root')
+              .single(),
+          )
+        : null,
+    [editionId, node],
+  )
   const [subtitleTrack, setSubtitleTrack] = useState('version1')
   const [editorOpen, setEditorOpen] = useState(false)
   useEffect(() => {
@@ -649,6 +669,30 @@ function TV() {
     window.addEventListener('keydown', close)
     return () => window.removeEventListener('keydown', close)
   }, [])
+  const programInfo = useLoad(
+    () =>
+      result<{ title: string } | null>(
+        db()
+          .from('tv_program')
+          .select('title')
+          .eq('selection_key', node || 'root')
+          .maybeSingle(),
+      ),
+    [node, editorOpen],
+  )
+  const publishedEditions = useLoad(
+    () =>
+      result<{ id: string; title: string; published_at: string }[]>(
+        db()
+          .from('tv_edition')
+          .select('id,title,published_at')
+          .eq('selection_key', node || 'root')
+          .order('published_at', { ascending: false })
+          .limit(50),
+      ),
+    [node, editorOpen],
+  )
+  useEffect(() => setEditorOpen(false), [editionId])
   const [cueRevision, setCueRevision] = useState(0)
   const [seek, setSeek] = useState<{ time: number; request: number }>()
   const [clipTime, setClipTime] = useState(0)
@@ -665,10 +709,12 @@ function TV() {
     setClipTime(0)
     setRound(0)
     setStarted(false)
-  }, [node, revision])
+  }, [node, revision, editionId])
   const [editedSections, setEditedSections] = useState<import('./api').Fragment[]>()
   useEffect(() => setEditedSections(undefined), [node, revision])
-  const sections = editedSections || data?.fragments || []
+  const sections = editionId
+    ? edition.data?.fragments || []
+    : editedSections || data?.fragments || []
   const clip = sections[index]
   const programPath = useLoad(async () => {
     if (node || !clip) return [] as Topic[]
@@ -689,7 +735,14 @@ function TV() {
   }, [node, clip?.id, locale])
   const cues = useLoad(async () => {
     if (!clip) return [] as Cue[]
-    const edition = await result<{ cues: (Cue & { section_id: string })[] } | null>(
+    if (editionId)
+      return (
+        edition.data?.tracks.find((t) => t.track === subtitleTrack && t.locale === locale)?.cues ||
+        []
+      )
+        .filter((c) => c.section_id === clip.id)
+        .map((c) => ({ ...c, track: subtitleTrack }))
+    const savedTrack = await result<{ cues: (Cue & { section_id: string })[] } | null>(
       db()
         .from('tv_selection_track')
         .select('cues')
@@ -698,8 +751,8 @@ function TV() {
         .eq('locale', locale)
         .maybeSingle(),
     )
-    if (edition)
-      return edition.cues
+    if (savedTrack)
+      return savedTrack.cues
         .filter((c) => c.section_id === clip.id)
         .map((c) => ({ ...c, track: subtitleTrack }))
     return result<Cue[]>(
@@ -710,7 +763,8 @@ function TV() {
         .eq('locale', locale)
         .order('start_seconds'),
     )
-  }, [clip?.id, clip?.video_id, node, locale, cueRevision, subtitleTrack])
+  }, [clip?.id, clip?.video_id, node, locale, cueRevision, subtitleTrack, editionId, edition.data])
+  if (editionId && !edition.data) return <Loading error={edition.error} />
   if (!data) return <Loading error={error} />
   if (node && !data.node)
     return (
@@ -822,7 +876,37 @@ function TV() {
                 Skip →
               </button>
             </div>
+            {editionId && (
+              <p>
+                {edition.data?.title} · Published edition ·{' '}
+                <Link to={`/tv/${node || ''}`}>Current TV</Link>
+              </p>
+            )}
             <div className="tv-tools">
+              {programInfo.data && (
+                <span>{editionId ? edition.data?.title : programInfo.data.title}</span>
+              )}
+              {!!publishedEditions.data?.length && (
+                <label>
+                  Edition{' '}
+                  <select
+                    aria-label="TV edition"
+                    value={editionId || ''}
+                    onChange={(e) => {
+                      window.location.hash = `/tv/${node || ''}${e.target.value ? `?edition=${e.target.value}` : ''}`
+                    }}
+                  >
+                    <option value="">Current TV</option>
+                    {publishedEditions.data.map((e, i) => (
+                      <option key={e.id} value={e.id}>
+                        {e.title} · {new Date(e.published_at).toLocaleString()} ·{' '}
+                        {publishedEditions.data!.length - i}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
               <label>
                 <span className="tv-cc-label">[CC]</span>{' '}
                 <select
@@ -844,6 +928,7 @@ function TV() {
                 </select>
               </label>
               <button
+                disabled={Boolean(editionId)}
                 className="tv-edit-icon"
                 aria-label="Edit TV program and subtitles"
                 title="Edit TV program and subtitles"
@@ -888,7 +973,7 @@ function TV() {
                   Close subtitles ×
                 </button>
                 <TVProgramEditor
-                  key={`${node || 'root'}-${locale}-${subtitleTrack}`}
+                  key={`${node || 'root'}-${locale}-${subtitleTrack}-${session?.user.id || 'guest'}`}
                   node={node}
                   fragments={sections}
                   track={subtitleTrack}
