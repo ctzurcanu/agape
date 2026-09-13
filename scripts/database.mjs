@@ -117,6 +117,13 @@ try {
       await client.query('rollback')
     }
     console.log('Passed: named TVs per topic, layouts, subtitles, editions, and permissions.')
+    await client.query('begin')
+    try {
+      await client.query(await readFile('tests/review.sql', 'utf8'))
+    } finally {
+      await client.query('rollback')
+    }
+    console.log('Passed: review reasons, single decisions, and submission status visibility.')
     console.log(
       'Passed: ontology isolation, RLS, subtree eligibility, ownership, moderation, timing, cycles, and localized navigation.',
     )

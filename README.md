@@ -104,7 +104,10 @@ eligibility and identity on every comment insert.
 The creator studio submits videos through YouTube channel verification, requests
 topic approval, publishes timed fragments in approved topics, and manages timed
 Markdown subtitle cues. An administrator reviews topic suggestions and video
-placements. Unapproved topic assignments cannot grant comment rights.
+placements. Unapproved topic assignments cannot grant comment rights. The studio
+shows each placement and topic suggestion as waiting, approved, or not approved,
+with its date and the reviewer's reason; rejections require a reason, and each
+submission can be decided only once until it is resubmitted.
 
 ### Configuration and integration status
 

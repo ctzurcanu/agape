@@ -112,7 +112,12 @@ npm run db:admin -- your-google-email
 ```
 
 Refresh the app. Administrators can create root topics or children directly,
-and review suggested topics and video placements in **Review**. Other signed-in
+and review suggested topics and video placements in **Review**, whose navigation
+link shows the number waiting. Rejecting requires a reason; approving accepts an
+optional note. Each decision is recorded once in `agape.moderation_decision`; an
+item that is no longer pending cannot be decided again. Submitters see the
+decision, date, and reason in the creator studio, but not which administrator
+decided. Resubmitting a rejected video returns it to the queue. Other signed-in
 users can suggest topics. Creating topics queues independent translation jobs;
 until translations are supplied, French navigation falls back to English.
 There is no automated translator running. Add reviewed translations to

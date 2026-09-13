@@ -243,7 +243,7 @@ export function App() {
             Agape TV <span className="live-dot" />
           </NavLink>
           <NavLink to="/studio">Creator studio</NavLink>
-          {admin && <NavLink to="/admin">Review</NavLink>}
+          {admin && <ReviewLink />}
         </nav>
         <div className="account">
           <select
@@ -1486,6 +1486,10 @@ function Studio() {
         .order('created_at', { ascending: false }),
     )
   }, [session?.user.id, revision])
+  const submissions = useLoad(
+    async () => (session ? result<Submissions>(db().rpc('my_submissions')) : null),
+    [session?.user.id, revision],
+  )
   const cues = useLoad(
     () =>
       selected
@@ -1520,7 +1524,7 @@ function Studio() {
       <h1>Creator studio.</h1>
       <p className="muted">Share your work, find its place, and bring a moment to Agape TV.</p>
       <Feedback {...work} />
-      <Feedback error={topics.error || mine.error || cues.error} />
+      <Feedback error={topics.error || mine.error || cues.error || submissions.error} />
       <div className="studio-grid">
         <section className="panel">
           <span className="step">01 / CONNECT AN IDEA</span>
@@ -1609,14 +1613,19 @@ function Studio() {
                   onClick={() => setSelected(v.video_id)}
                 >
                   <strong>{v.title}</strong>
-                  <small>
-                    {v.video_topics
-                      .map(
-                        (t) =>
-                          `${topics.data?.find((n) => n.node_id === t.node_id)?.name || 'Topic'} · ${t.status}`,
-                      )
-                      .join(' / ')}
-                  </small>
+                  {submissions.data?.placements
+                    .filter((p) => p.video_id === v.video_id)
+                    .map((p) => (
+                      <span className="placement" key={p.node_id}>
+                        {p.topic} ·{' '}
+                        <SubmissionStatus
+                          status={p.status}
+                          submitted={p.submitted_at}
+                          decided={p.decided_at}
+                          reason={p.reason}
+                        />
+                      </span>
+                    ))}
                 </button>
               ))}
             </div>
@@ -1624,6 +1633,35 @@ function Studio() {
           <p className="muted small-copy">
             Select a video to add a fragment or edit its creator subtitles.
           </p>
+          {submissions.data?.placements.some((p) => p.status === 'rejected') && (
+            <p className="notice">
+              A placement that was not approved can be resubmitted above, in the same topic or a
+              better-suited one. It returns to the review queue.
+            </p>
+          )}
+          {!!submissions.data?.topics.length && (
+            <>
+              <h3>Your topic suggestions</h3>
+              <ul className="submission-list">
+                {submissions.data.topics.map((t) => (
+                  <li key={t.id}>
+                    {t.created_node_id ? (
+                      <Link to={topicUrl(t.created_node_id)}>{t.name}</Link>
+                    ) : (
+                      <strong>{t.name}</strong>
+                    )}
+                    {t.parent && <small> in {t.parent}</small>} ·{' '}
+                    <SubmissionStatus
+                      status={t.status}
+                      submitted={t.created_at}
+                      decided={t.decided_at}
+                      reason={t.reason}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           <TopicForm parent={null} />
         </section>
       </div>
@@ -1711,6 +1749,20 @@ function Studio() {
               {!approved.length && (
                 <p className="notice">Your video needs an approved topic placement first.</p>
               )}
+              {!!approved.length && (
+                <p className="muted small-copy">
+                  Approved placements also let you comment within these topics and create a named TV
+                  there:{' '}
+                  {approved.map((t, i) => (
+                    <span key={t.node_id}>
+                      {i > 0 && ', '}
+                      <Link to={`/tv/${t.node_id}`}>
+                        {topics.data?.find((n) => n.node_id === t.node_id)?.name || 'Topic'} TV
+                      </Link>
+                    </span>
+                  ))}
+                </p>
+              )}
             </section>
             <section className="panel">
               <span className="step">04 / ADD SOME CONTEXT</span>
@@ -1770,17 +1822,145 @@ function Studio() {
   )
 }
 
+type Submissions = {
+  placements: {
+    video_id: string
+    title: string
+    node_id: string
+    topic: string
+    status: string
+    submitted_at: string
+    decided_at: string | null
+    reason: string | null
+  }[]
+  topics: {
+    id: string
+    name: string
+    parent: string | null
+    status: string
+    created_at: string
+    created_node_id: string | null
+    decided_at: string | null
+    reason: string | null
+  }[]
+}
+type ReviewQueue = {
+  videos: {
+    video_id: string
+    node_id: string
+    title: string
+    duration_seconds: number
+    channel_title: string
+    submitted_at: string
+    topic: string
+    approved_placements: number
+    history: { decision: string; reason: string | null; decided_at: string }[]
+  }[]
+  topics: {
+    id: string
+    name: string
+    description: string
+    parent_id: string | null
+    parent: string | null
+    proposer: string
+    created_at: string
+  }[]
+  recent: {
+    kind: string
+    decision: string
+    reason: string | null
+    decided_at: string
+    subject: string | null
+    topic: string | null
+    decided_by: string | null
+  }[]
+}
+function dateLabel(value: string | null) {
+  return value ? new Date(value).toLocaleDateString() : ''
+}
+function SubmissionStatus({
+  status,
+  submitted,
+  decided,
+  reason,
+}: {
+  status: string
+  submitted: string
+  decided: string | null
+  reason: string | null
+}) {
+  if (status === 'pending')
+    return <small>Waiting for review · submitted {dateLabel(submitted)}</small>
+  if (status === 'approved') return <small>Approved {dateLabel(decided)}</small>
+  return (
+    <small className="rejected">
+      Not approved {dateLabel(decided)}
+      {reason && `: ${reason}`}
+    </small>
+  )
+}
+function ReviewLink() {
+  const { revision } = useApp()
+  const queue = useLoad(() => result<ReviewQueue>(db().rpc('moderation_queue')), [revision])
+  const pending = (queue.data?.videos.length || 0) + (queue.data?.topics.length || 0)
+  return <NavLink to="/admin">Review{pending ? ` · ${pending}` : ''}</NavLink>
+}
+function ReviewActions({
+  busy,
+  onDecide,
+}: {
+  busy: boolean
+  onDecide: (approve: boolean, reason: string) => void
+}) {
+  const [rejecting, setRejecting] = useState(false),
+    [note, setNote] = useState('')
+  return rejecting ? (
+    <form
+      className="stack-form"
+      onSubmit={(e) => {
+        e.preventDefault()
+        onDecide(false, note)
+      }}
+    >
+      <label>
+        Reason shown to the submitter
+        <textarea
+          required
+          maxLength={1000}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </label>
+      <div className="button-row">
+        <button disabled={busy || !note.trim()}>Reject with reason</button>
+        <button type="button" className="secondary" onClick={() => setRejecting(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  ) : (
+    <div className="stack-form">
+      <label>
+        Note to the submitter (optional)
+        <input maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} />
+      </label>
+      <div className="button-row">
+        <button disabled={busy} onClick={() => onDecide(true, note)}>
+          Approve
+        </button>
+        <button className="secondary" disabled={busy} onClick={() => setRejecting(true)}>
+          Reject…
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function Admin() {
   const { admin, revision, refresh } = useApp(),
     work = useWork()
   const { data, error } = useLoad(
-    () =>
-      admin
-        ? result<{
-            topics: { id: string; name: string; description: string; parent_id: string | null }[]
-            videos: { video_id: string; node_id: string; title: string; topic: string }[]
-          }>(db().rpc('moderation_queue'))
-        : Promise.resolve(null),
+    () => (admin ? result<ReviewQueue>(db().rpc('moderation_queue')) : Promise.resolve(null)),
     [admin, revision],
   )
   if (!admin)
@@ -1789,9 +1969,24 @@ function Admin() {
         <p>This page is available to Agape administrators.</p>
       </Empty>
     )
-  async function moderate(kind: string, id: string, node: string | null, approve: boolean) {
-    await result(db().rpc('moderate', { p_kind: kind, p_id: id, p_node: node, p_approve: approve }))
-    refresh()
+  function decide(kind: string, id: string, node: string | null, approve: boolean, reason: string) {
+    void work.run(async () => {
+      try {
+        await result(
+          db().rpc('moderate', {
+            p_kind: kind,
+            p_id: id,
+            p_node: node,
+            p_approve: approve,
+            p_reason: reason.trim() || null,
+          }),
+        )
+        work.setMessage(approve ? 'Approved.' : 'Rejected. The submitter can now see your reason.')
+      } finally {
+        // Refresh on failure too, so an item another administrator already reviewed disappears.
+        refresh()
+      }
+    })
   }
   return (
     <div className="page">
@@ -1799,7 +1994,8 @@ function Admin() {
       <h1>Review contributions.</h1>
       <p className="muted">
         Approve a video’s placement only when its content belongs to the proposed topic. Approved
-        placements grant subtree commenting rights.
+        placements grant subtree commenting rights and let creators start named TVs there.
+        Submitters see your decision, date, and reason, but not who reviewed it.
       </p>
       <Feedback {...work} />
       <TopicForm parent={null} />
@@ -1807,37 +2003,23 @@ function Admin() {
         <Loading error={error} />
       ) : (
         <>
-          <h2>Topic suggestions</h2>
-          {!data.topics.length && <p className="muted">No suggestions waiting.</p>}
-          {data.topics.map((t) => (
-            <article className="review-item" key={t.id}>
-              <div>
-                <h3>{t.name}</h3>
-                <p>{t.description}</p>
-                {t.parent_id && <Link to={topicUrl(t.parent_id)}>View parent topic ↗</Link>}
-              </div>
-              <div className="button-row">
-                <button
-                  disabled={work.busy}
-                  onClick={() => work.run(() => moderate('topic', t.id, null, true))}
-                >
-                  Approve
-                </button>
-                <button
-                  className="secondary"
-                  disabled={work.busy}
-                  onClick={() => work.run(() => moderate('topic', t.id, null, false))}
-                >
-                  Reject
-                </button>
-              </div>
-            </article>
-          ))}
-          <h2>Video placements</h2>
+          <h2>Video placements · {data.videos.length} waiting</h2>
           {!data.videos.length && <p className="muted">No videos waiting.</p>}
           {data.videos.map((v) => (
             <article className="review-item" key={`${v.video_id}-${v.node_id}`}>
               <div>
+                <a
+                  href={`https://www.youtube.com/watch?v=${v.video_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img
+                    className="review-thumbnail"
+                    src={`https://i.ytimg.com/vi/${v.video_id}/mqdefault.jpg`}
+                    alt=""
+                    loading="lazy"
+                  />
+                </a>
                 <h3>
                   <a
                     href={`https://www.youtube.com/watch?v=${v.video_id}`}
@@ -1847,25 +2029,71 @@ function Admin() {
                     {v.title} ↗
                   </a>
                 </h3>
-                <Link to={topicUrl(v.node_id)}>{v.topic}</Link>
+                <p className="muted">
+                  {v.channel_title} · {timeLabel(v.duration_seconds)} · submitted{' '}
+                  {dateLabel(v.submitted_at)}
+                </p>
+                <p>
+                  Proposed topic: <Link to={topicUrl(v.node_id)}>{v.topic}</Link>
+                </p>
+                <p className="muted small-copy">
+                  {v.approved_placements
+                    ? `${v.approved_placements} approved placement${v.approved_placements === 1 ? '' : 's'} from this creator`
+                    : 'No approved placements from this creator yet'}
+                </p>
+                {v.history.map((h, i) => (
+                  <p className="muted small-copy" key={i}>
+                    Earlier: {h.decision === 'approved' ? 'approved' : 'not approved'}{' '}
+                    {dateLabel(h.decided_at)}
+                    {h.reason && ` — ${h.reason}`}
+                  </p>
+                ))}
               </div>
-              <div className="button-row">
-                <button
-                  disabled={work.busy}
-                  onClick={() => work.run(() => moderate('video', v.video_id, v.node_id, true))}
-                >
-                  Approve
-                </button>
-                <button
-                  className="secondary"
-                  disabled={work.busy}
-                  onClick={() => work.run(() => moderate('video', v.video_id, v.node_id, false))}
-                >
-                  Reject
-                </button>
-              </div>
+              <ReviewActions
+                busy={work.busy}
+                onDecide={(approve, reason) =>
+                  decide('video', v.video_id, v.node_id, approve, reason)
+                }
+              />
             </article>
           ))}
+          <h2>Topic suggestions · {data.topics.length} waiting</h2>
+          {!data.topics.length && <p className="muted">No suggestions waiting.</p>}
+          {data.topics.map((t) => (
+            <article className="review-item" key={t.id}>
+              <div>
+                <h3>{t.name}</h3>
+                <p>{t.description}</p>
+                <p className="muted">
+                  {t.parent ? (
+                    <>
+                      Under <Link to={topicUrl(t.parent_id)}>{t.parent}</Link>
+                    </>
+                  ) : (
+                    'New root topic'
+                  )}{' '}
+                  · suggested by {t.proposer} · {dateLabel(t.created_at)}
+                </p>
+              </div>
+              <ReviewActions
+                busy={work.busy}
+                onDecide={(approve, reason) => decide('topic', t.id, null, approve, reason)}
+              />
+            </article>
+          ))}
+          <h2>Recent decisions</h2>
+          {!data.recent.length && <p className="muted">No decisions yet.</p>}
+          <ul className="submission-list">
+            {data.recent.map((d, i) => (
+              <li key={i}>
+                <strong>{d.decision === 'approved' ? 'Approved' : 'Rejected'}</strong>{' '}
+                {d.kind === 'video' ? 'video' : 'topic'} “{d.subject}”{d.topic && ` in ${d.topic}`}{' '}
+                · {new Date(d.decided_at).toLocaleString()}
+                {d.decided_by && ` · ${d.decided_by}`}
+                {d.reason && ` — ${d.reason}`}
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </div>

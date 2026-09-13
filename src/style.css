@@ -1834,3 +1834,21 @@ body:has(.tv-page) main {
   min-width: 225px;
   max-width: none;
 }
+.submission-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.owned .placement {
+  display: block;
+}
+.owned small.rejected,
+.submission-list small.rejected {
+  color: #9b2c2c;
+}
+.review-thumbnail {
+  width: 160px;
+  max-width: 100%;
+  border-radius: 8px;
+}
