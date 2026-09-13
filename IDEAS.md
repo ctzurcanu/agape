@@ -235,6 +235,7 @@ Started on **2026-09-13**, following the progression above:
 - **Named TVs:** several TVs per topic, each with an id, one home topic, an owner, its own excerpt list, subtitle alternatives, and immutable editions published only from a reviewed snapshot. Placement in several topics is not implemented.
 - **Review decisions:** reasons required for rejections, one decision per submission, and submission status visible to creators.
 - **Voting pilot:** administrator-opened topic ballots for videos or TV editions (never combined), 1 point per recommended work with an optional explanation, starter coefficients a = 3, b = 1 (one subtitle version per TV, track, and day), c = 0.25, z = 1, budgets committed only while a ballot is open, votes sealed until close, and a top-10 board with a provisional label below 3 works.
+- **Opening to creators:** public About, Privacy and Terms pages for Google's OAuth verification, shareable topic invitations (`#/join/<topic>`), a studio prompt to add an approved video's moment to its topic TV, and self-serve deletion of Agape data that never deletes the sign-in account shared with Allways.
 - **Next:** random discovery slots, time-window leaderboards, and the open questions below (carryover, coefficient governance, voter disclosure).
 - AI moderation remains a planned feature.
 

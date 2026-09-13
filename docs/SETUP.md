@@ -71,6 +71,13 @@ Do not add a `VITE_` prefix or commit this file.
    `https://www.googleapis.com/auth/youtube.readonly`. While the OAuth app is in
    testing, add the intended Google accounts as test users. Public release may
    require Google's OAuth verification.
+6. For verification, set the consent screen's application homepage to
+   `https://ctzurcanu.github.io/agape/about.html`, its privacy policy to
+   `https://ctzurcanu.github.io/agape/privacy.html`, and its terms of service to
+   `https://ctzurcanu.github.io/agape/terms.html`. Google requires the authorized
+   domain (`ctzurcanu.github.io`) to be verified in Google Search Console, which
+   may need the user-site repository or a custom domain. Review the policy texts
+   before submitting, and keep them in sync with what the code stores.
 
 Sign-in uses PKCE and Agape-specific browser auth storage. Google credentials
 are sent only to Supabase's provider configuration, never shipped in the app.

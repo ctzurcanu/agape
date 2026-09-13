@@ -191,3 +191,22 @@ per TV, track, and day) + 0.25 × comments on others' videos − 1 × fines`, fr
 `agape.voting_budget_config`. Points count only while their ballot is open. Fines carry a
 reason the creator sees in the studio. Discovery slots, pairwise ballots, and coefficient
 governance are not implemented.
+
+### Public pages, invitations, and data deletion
+
+Static pages in `public/` are served without JavaScript at `about.html`, `privacy.html`, and
+`terms.html` under the site base, and the app footer links to them. They are the homepage,
+privacy policy, and terms URLs for Google's OAuth consent screen, and are drafts for the operator
+to review.
+
+`#/join/<topic>` is a shareable invitation to a topic. It explains how to join, keeps the topic
+through Google sign-in, and continues to the creator studio with that topic selected. The link
+grants nothing by itself: participation still requires a verified video and an approved
+placement. Topic pages offer **Invite a creator** to copy it. After approval, the studio prompts
+creators to add a moment of the video to the topic's TV.
+
+**Delete my Agape data** in the studio calls `agape.delete_my_agape_data`, which removes the
+person's channels and videos (with everything attached), comments, topic suggestions, named TVs
+and editions, ballot votes, fines, and administrator role, and removes their name from shared
+subtitles, editions, review decisions, and ballots. It never deletes the Supabase sign-in
+account, which is shared with Allways, and refuses to remove the only administrator.

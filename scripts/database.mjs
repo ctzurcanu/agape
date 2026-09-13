@@ -131,6 +131,13 @@ try {
       await client.query('rollback')
     }
     console.log('Passed: voting budgets, eligibility, exclusions, sealed ballots, and results.')
+    await client.query('begin')
+    try {
+      await client.query(await readFile('tests/deletion.sql', 'utf8'))
+    } finally {
+      await client.query('rollback')
+    }
+    console.log('Passed: self-serve deletion keeps shared accounts and others’ work.')
     console.log(
       'Passed: ontology isolation, RLS, subtree eligibility, ownership, moderation, timing, cycles, and localized navigation.',
     )

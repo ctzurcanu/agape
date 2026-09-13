@@ -181,9 +181,20 @@ export function App() {
           })
       }
     })
-    const { data } = supabase.auth.onAuthStateChange((_event, value) => {
+    const { data } = supabase.auth.onAuthStateChange((event, value) => {
       setSession(value)
       setRevision((v) => v + 1)
+      // Google returns to the site root; resume the page that started sign-in, such as an invitation.
+      if (event === 'SIGNED_IN') {
+        try {
+          const target = sessionStorage.getItem('agape.return-to')
+          sessionStorage.removeItem('agape.return-to')
+          if (target?.startsWith('#/') && window.location.hash !== target)
+            window.location.hash = target
+        } catch {
+          /* Storage may be unavailable; staying on the home page is acceptable. */
+        }
+      }
     })
     return () => {
       alive = false
@@ -218,6 +229,11 @@ export function App() {
     if (!settings.ok) throw new Error('Sign-in is temporarily unavailable. Please try again.')
     if (!(await settings.json()).external?.google)
       throw new Error('Google sign-in has not been enabled for this community yet.')
+    try {
+      sessionStorage.setItem('agape.return-to', window.location.hash)
+    } catch {
+      /* Without storage, sign-in still works and returns to the home page. */
+    }
     const { error } = await db().auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -288,6 +304,7 @@ export function App() {
             <Route path="/studio" element={<Studio />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/ballot/:ballot" element={<Ballot />} />
+            <Route path="/join/:node" element={<Join />} />
             <Route
               path="*"
               element={
@@ -305,6 +322,11 @@ export function App() {
         </Link>
         <p>Good ideas grow in good company.</p>
         <span>Made for creators. Open to curiosity.</span>
+        <nav className="footer-links" aria-label="About Agape">
+          <a href={`${import.meta.env.BASE_URL}about.html`}>About</a>
+          <a href={`${import.meta.env.BASE_URL}privacy.html`}>Privacy</a>
+          <a href={`${import.meta.env.BASE_URL}terms.html`}>Terms</a>
+        </nav>
       </footer>
     </AppContext.Provider>
   )
@@ -369,6 +391,7 @@ function Explore() {
             <Link className="button" to={node ? `/tv/${node}` : '/tv'}>
               <span>▷</span> Watch this community
             </Link>
+            {node && <InviteButton node={node} />}
             <button
               className="plain text-link"
               onClick={() =>
@@ -1450,6 +1473,212 @@ function Ballot() {
   )
 }
 
+// Removes the person's Agape data; the Google sign-in account shared with Allways is kept.
+function DeleteMyData() {
+  const { refresh } = useApp(),
+    work = useWork()
+  const [open, setOpen] = useState(false),
+    [confirm, setConfirm] = useState(''),
+    [done, setDone] = useState<Record<string, number>>()
+  const phrase = 'DELETE MY AGAPE DATA'
+  const operator = 'christian.tzurcanu@gmail.com'
+  if (done)
+    return (
+      <section className="panel danger-zone">
+        <span className="step">YOUR AGAPE DATA</span>
+        <h2>Your Agape data was deleted.</h2>
+        <p className="muted">
+          {Object.entries(done)
+            .map(([kind, count]) => `${kind.replaceAll('_', ' ')}: ${count}`)
+            .join(' · ')}
+        </p>
+        <p>
+          Your Google sign-in account still exists because Agape shares it with Allways.{' '}
+          <a href={`mailto:${operator}?subject=Delete%20my%20sign-in%20account`}>
+            Email {operator}
+          </a>{' '}
+          to delete it too.
+        </p>
+        <button onClick={() => void db().auth.signOut()}>Sign out</button>
+      </section>
+    )
+  return (
+    <section className="panel danger-zone">
+      <span className="step">YOUR AGAPE DATA</span>
+      <h2>Delete my Agape data</h2>
+      {!open ? (
+        <button className="secondary" onClick={() => setOpen(true)}>
+          Review what will be deleted…
+        </button>
+      ) : (
+        <form
+          className="stack-form"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void work.run(async () => {
+              setDone(
+                await result<Record<string, number>>(
+                  db().rpc('delete_my_agape_data', { p_confirm: confirm }),
+                ),
+              )
+              refresh()
+            })
+          }}
+        >
+          <p>
+            <strong>Deleted:</strong> your verified channels and videos, with their topic
+            placements, TV moments, creator subtitles and the comments others left on them; your
+            comments; topic suggestions; named TVs and their editions; ballot recommendations;
+            fines; and any administrator role.
+          </p>
+          <p>
+            <strong>Kept without your name:</strong> subtitle lines on shared excerpts, subtitle
+            versions on other creators’ TVs, editions you published for them, and review decisions
+            and ballots you created.
+          </p>
+          <p>
+            <strong>Not deleted:</strong> your Google sign-in account, which Agape shares with
+            Allways.{' '}
+            <a href={`mailto:${operator}?subject=Delete%20my%20sign-in%20account`}>
+              Email the operator
+            </a>{' '}
+            to remove it. See the{' '}
+            <a href={`${import.meta.env.BASE_URL}privacy.html`}>privacy policy</a>.
+          </p>
+          <label>
+            Type {phrase} to confirm
+            <input
+              value={confirm}
+              autoComplete="off"
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+          </label>
+          <div className="button-row">
+            <button disabled={work.busy || confirm !== phrase}>
+              Delete my Agape data permanently
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                setOpen(false)
+                setConfirm('')
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+      <Feedback {...work} />
+    </section>
+  )
+}
+
+function InviteButton({ node }: { node: string }) {
+  const [state, setState] = useState<'' | 'copied' | 'manual'>('')
+  const url = `${window.location.origin}${import.meta.env.BASE_URL}#/join/${node}`
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url)
+      setState('copied')
+    } catch {
+      setState('manual')
+    }
+  }
+  return (
+    <>
+      <button className="plain text-link" onClick={() => void copy()}>
+        {state === 'copied' ? 'Invitation link copied ✓' : 'Invite a creator'}
+      </button>
+      {state === 'manual' && (
+        <input
+          className="invite-link"
+          readOnly
+          aria-label="Invitation link"
+          value={url}
+          onFocus={(e) => e.currentTarget.select()}
+        />
+      )}
+    </>
+  )
+}
+
+// A shareable invitation to one topic. It grants nothing by itself: joining still requires a
+// verified video and an approved placement.
+function Join() {
+  const { node } = useParams(),
+    { session, locale, revision, signIn } = useApp(),
+    work = useWork()
+  const topic = useLoad(() => browse(node || null, locale), [node, locale, revision])
+  const tvs = useLoad(
+    () => result<{ id: string }[]>(db().rpc('tv_programs', { p_node: node || null })),
+    [node, revision],
+  )
+  const ballots = useLoad(
+    () => result<BallotSummary[]>(db().rpc('ballot_list', { p_node: node || null })),
+    [node, revision],
+  )
+  if (!topic.data) return <Loading error={topic.error} />
+  if (!topic.data.node)
+    return (
+      <Empty title="This invitation’s topic is not available.">
+        <Link to="/">Explore all topics →</Link>
+      </Empty>
+    )
+  const t = topic.data.node
+  const base = import.meta.env.BASE_URL
+  return (
+    <div className="page join-page">
+      <Breadcrumbs topics={topic.data.breadcrumbs} />
+      <div className="eyebrow">YOU’RE INVITED</div>
+      <h1>Bring your work to {t.name}.</h1>
+      <p className="muted">
+        {t.description ||
+          'A topic in Agape’s shared map of ideas, shaped by the creators who contribute to it.'}
+      </p>
+      <p className="muted">
+        {plural(topic.data.videos.length, 'approved video')} ·{' '}
+        {plural(tvs.data?.length || 0, 'named TV')} ·{' '}
+        {plural(ballots.data?.filter((b) => b.open).length || 0, 'open ballot')}
+      </p>
+      <ol className="join-steps">
+        <li>
+          <strong>Sign in with Google.</strong> Agape asks for read-only YouTube access to confirm
+          which channel you own.
+        </li>
+        <li>
+          <strong>Verify one of your videos</strong> — public, embeddable, and suited to {t.name}.
+        </li>
+        <li>
+          <strong>An administrator reviews the placement.</strong> You’ll see the decision and its
+          reason in your studio.
+        </li>
+        <li>
+          <strong>Then take part:</strong> comment, add a moment to the topic’s TV, create named
+          TVs, and recommend other creators’ work.
+        </li>
+      </ol>
+      <Feedback {...work} />
+      {session ? (
+        <Link className="button" to={`/studio?topic=${node}`}>
+          Continue to your studio ↗
+        </Link>
+      ) : (
+        <button disabled={work.busy} onClick={() => work.run(signIn)}>
+          Join with Google ↗
+        </button>
+      )}
+      <p className="muted small-copy">
+        By joining you accept the <a href={`${base}terms.html`}>terms</a> and the{' '}
+        <a href={`${base}privacy.html`}>privacy policy</a>.{' '}
+        <a href={`${base}about.html`}>About Agape</a> ·{' '}
+        <Link to={topicUrl(node)}>Explore {t.name}</Link>
+      </p>
+    </div>
+  )
+}
+
 function VotingBudgetPanel() {
   const { session, revision } = useApp()
   const budget = useLoad(
@@ -2050,6 +2279,8 @@ function Studio() {
   const [subtitleTrack, setSubtitleTrack] = useState('version1')
   const [subtitleOpen, setSubtitleOpen] = useState(false)
   const [subtitleRevision, setSubtitleRevision] = useState(0)
+  const [clipTopic, setClipTopic] = useState(''),
+    [lastMoment, setLastMoment] = useState('')
   const topics = useLoad(
     () =>
       result<Topic[]>(
@@ -2063,10 +2294,15 @@ function Studio() {
       db().from('channels').select('channel_id').eq('user_id', session.user.id),
     )
     if (!channels.length) return []
-    return result<(Video & { video_topics: { node_id: string; status: string }[] })[]>(
+    return result<
+      (Video & {
+        video_topics: { node_id: string; status: string }[]
+        fragments: { id: string }[]
+      })[]
+    >(
       db()
         .from('videos')
-        .select('*,video_topics(node_id,status)')
+        .select('*,video_topics(node_id,status),fragments(id)')
         .in(
           'channel_id',
           channels.map((c) => c.channel_id),
@@ -2094,6 +2330,23 @@ function Studio() {
   )
   const chosen = mine.data?.find((v) => v.video_id === selected)
   const approved = chosen?.video_topics.filter((t) => t.status === 'approved') || []
+  // Approved videos that have no moment yet, so they are not playing on any topic TV.
+  const nextMoments = (submissions.data?.placements || []).filter(
+    (p) =>
+      p.status === 'approved' &&
+      !mine.data?.find((v) => v.video_id === p.video_id)?.fragments.length,
+  )
+  function startMoment(video: string, topic: string) {
+    setSelected(video)
+    setClipTopic(topic)
+    setTimeout(() =>
+      document.getElementById('add-moment')?.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'instant'
+          : 'smooth',
+      }),
+    )
+  }
   if (!session)
     return (
       <div className="page">
@@ -2102,6 +2355,10 @@ function Studio() {
           <button disabled={work.busy} onClick={() => work.run(signIn)}>
             Connect with Google ↗
           </button>
+          <p className="small-copy">
+            By joining you accept the <a href={`${import.meta.env.BASE_URL}terms.html`}>terms</a>{' '}
+            and the <a href={`${import.meta.env.BASE_URL}privacy.html`}>privacy policy</a>.
+          </p>
           <Feedback {...work} />
         </Empty>
       </div>
@@ -2113,6 +2370,16 @@ function Studio() {
       <p className="muted">Share your work, find its place, and bring a moment to Agape TV.</p>
       <Feedback {...work} />
       <Feedback error={topics.error || mine.error || cues.error || submissions.error} />
+      {nextMoments.length > 0 && (
+        <section className="next-steps" aria-label="Next steps">
+          {nextMoments.map((p) => (
+            <p className="notice" key={`${p.video_id}-${p.node_id}`}>
+              “{p.title}” was approved in {p.topic}. Next: add a moment of it to the topic’s TV.{' '}
+              <button onClick={() => startMoment(p.video_id, p.node_id)}>Add a moment</button>
+            </p>
+          ))}
+        </section>
+      )}
       <div className="studio-grid">
         <section className="panel">
           <span className="step">01 / CONNECT AN IDEA</span>
@@ -2198,7 +2465,10 @@ function Studio() {
                 <button
                   className={selected === v.video_id ? 'owned selected' : 'owned'}
                   key={v.video_id}
-                  onClick={() => setSelected(v.video_id)}
+                  onClick={() => {
+                    setSelected(v.video_id)
+                    setClipTopic('')
+                  }}
                 >
                   <strong>{v.title}</strong>
                   {submissions.data?.placements
@@ -2254,6 +2524,7 @@ function Studio() {
         </section>
       </div>
       <VotingBudgetPanel />
+      <DeleteMyData />
       {chosen && (
         <>
           <div className="section-heading">
@@ -2263,26 +2534,32 @@ function Studio() {
             </button>
           </div>
           <div className="studio-grid">
-            <section className="panel">
+            <section className="panel" id="add-moment">
               <span className="step">03 / A MOMENT WORTH SHARING</span>
               <h2>Add to Agape TV</h2>
+              {lastMoment && (
+                <p className="notice">
+                  Your moment is playing in the topic’s TV loop.{' '}
+                  <Link to={`/tv/${lastMoment}`}>Watch the topic TV ↗</Link>
+                </p>
+              )}
               <form
                 className="stack-form"
                 onSubmit={(e) => {
                   e.preventDefault()
                   void work.run(async () => {
-                    const form = new FormData(e.currentTarget)
                     await result(
                       db().rpc('submit_fragment', {
                         p_video: selected,
-                        p_node: form.get('clipTopic'),
+                        p_node: clipTopic,
                         p_title: clipTitle,
                         p_start: Number(start),
                         p_end: Number(end),
                       }),
                     )
                     setClipTitle('')
-                    work.setMessage('Your fragment is now in the topic’s TV loop.')
+                    setLastMoment(clipTopic)
+                    work.setMessage('Your moment is now in the topic’s TV loop.')
                     refresh()
                   })
                 }}
@@ -2298,7 +2575,12 @@ function Studio() {
                 </label>
                 <label>
                   Approved topic
-                  <select name="clipTopic" required>
+                  <select
+                    name="clipTopic"
+                    required
+                    value={clipTopic}
+                    onChange={(e) => setClipTopic(e.target.value)}
+                  >
                     <option value="">Choose a topic</option>
                     {approved.map((t) => (
                       <option key={t.node_id} value={t.node_id}>

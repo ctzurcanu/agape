@@ -1889,3 +1889,25 @@ body:has(.tv-page) main {
 .voting-budget {
   margin: 24px 0;
 }
+.footer-links {
+  display: flex;
+  gap: 16px;
+}
+.invite-link {
+  width: min(100%, 32rem);
+}
+.join-steps {
+  display: grid;
+  gap: 10px;
+  padding-left: 1.2rem;
+  margin: 24px 0;
+}
+.next-steps {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+.danger-zone {
+  margin: 24px 0;
+  border-color: #c9a6a6;
+}
