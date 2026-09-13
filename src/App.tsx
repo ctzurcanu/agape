@@ -259,6 +259,7 @@ export function App() {
             Agape TV <span className="live-dot" />
           </NavLink>
           <NavLink to="/studio">Creator studio</NavLink>
+          {session && <NotificationsLink />}
           {admin && <ReviewLink />}
         </nav>
         <div className="account">
@@ -305,6 +306,8 @@ export function App() {
             <Route path="/admin" element={<Admin />} />
             <Route path="/ballot/:ballot" element={<Ballot />} />
             <Route path="/join/:node" element={<Join />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/creator/:user" element={<Creator />} />
             <Route
               path="*"
               element={
@@ -552,6 +555,7 @@ function Explore() {
               <TopicForm parent={node || null} />
             </Empty>
           )}
+          <DiscoverVideos node={node} />
           <div className="section-heading video-heading">
             <h2>From the community</h2>
             {node && (
@@ -1473,7 +1477,7 @@ function Ballot() {
   )
 }
 
-// Removes the person's Agape data; the Google sign-in account shared with Allways is kept.
+// Removes the person's Agape data; the Google sign-in account itself is kept.
 function DeleteMyData() {
   const { refresh } = useApp(),
     work = useWork()
@@ -1493,7 +1497,7 @@ function DeleteMyData() {
             .join(' · ')}
         </p>
         <p>
-          Your Google sign-in account still exists because Agape shares it with Allways.{' '}
+          Your Google sign-in account itself still exists.{' '}
           <a href={`mailto:${operator}?subject=Delete%20my%20sign-in%20account`}>
             Email {operator}
           </a>{' '}
@@ -1537,8 +1541,7 @@ function DeleteMyData() {
             and ballots you created.
           </p>
           <p>
-            <strong>Not deleted:</strong> your Google sign-in account, which Agape shares with
-            Allways.{' '}
+            <strong>Not deleted:</strong> your Google sign-in account itself.{' '}
             <a href={`mailto:${operator}?subject=Delete%20my%20sign-in%20account`}>
               Email the operator
             </a>{' '}
@@ -1572,6 +1575,286 @@ function DeleteMyData() {
       )}
       <Feedback {...work} />
     </section>
+  )
+}
+
+function NotificationsLink() {
+  const { revision } = useApp()
+  const notices = useLoad(
+    () => result<{ unread: number }>(db().rpc('my_notifications', { p_limit: 1 })),
+    [revision],
+  )
+  const unread = notices.data?.unread || 0
+  return <NavLink to="/notifications">Notices{unread ? ` · ${unread}` : ''}</NavLink>
+}
+
+type Notice = {
+  id: string
+  kind: string
+  title: string
+  body: string
+  link: string | null
+  created_at: string
+  read_at: string | null
+  emailed_at: string | null
+}
+type NoticePreferences = { email_review: boolean; email_ballot: boolean; email_fine: boolean }
+
+function Notifications() {
+  const { session, revision, refresh, signIn } = useApp(),
+    work = useWork(),
+    navigate = useNavigate()
+  const notices = useLoad(
+    async () =>
+      session
+        ? result<{ unread: number; items: Notice[] }>(
+            db().rpc('my_notifications', { p_limit: 100 }),
+          )
+        : null,
+    [session?.user.id, revision],
+  )
+  const preferences = useLoad(
+    async () =>
+      session ? result<NoticePreferences>(db().rpc('my_notification_preferences')) : null,
+    [session?.user.id, revision],
+  )
+  if (!session)
+    return (
+      <div className="page">
+        <Empty title="Your notices">
+          <p>Sign in to see decisions on your submissions, new ballots, and fines.</p>
+          <button disabled={work.busy} onClick={() => work.run(signIn)}>
+            Join ↗
+          </button>
+        </Empty>
+      </div>
+    )
+  function markRead(ids: string[] | null) {
+    void work.run(async () => {
+      await result(db().rpc('mark_notifications_read', { p_ids: ids }))
+      refresh()
+    })
+  }
+  function open(notice: Notice) {
+    void work.run(async () => {
+      if (!notice.read_at) await result(db().rpc('mark_notifications_read', { p_ids: [notice.id] }))
+      navigate((notice.link || '#/studio').slice(1))
+      refresh()
+    })
+  }
+  function save(next: NoticePreferences) {
+    void work.run(async () => {
+      await result(
+        db().rpc('set_notification_preferences', {
+          p_review: next.email_review,
+          p_ballot: next.email_ballot,
+          p_fine: next.email_fine,
+        }),
+      )
+      work.setMessage('Email preferences saved.')
+      refresh()
+    })
+  }
+  const kinds = [
+    ['email_review', 'Decisions on my videos and topic suggestions'],
+    ['email_ballot', 'Ballots opening and results in my topics'],
+    ['email_fine', 'Fines on my voting budget'],
+  ] as const
+  return (
+    <div className="page">
+      <div className="eyebrow">WHAT’S NEW FOR YOU</div>
+      <h1>Notices.</h1>
+      <Feedback {...work} />
+      {!notices.data ? (
+        <Loading error={notices.error} />
+      ) : (
+        <section className="panel">
+          <div className="section-heading">
+            <h2>{plural(notices.data.unread, 'unread notice')}</h2>
+            {notices.data.unread > 0 && (
+              <button className="secondary" disabled={work.busy} onClick={() => markRead(null)}>
+                Mark all read
+              </button>
+            )}
+          </div>
+          {!notices.data.items.length && (
+            <p className="muted">
+              Nothing yet. Decisions on your submissions, new ballots in your topics, and fines will
+              appear here.
+            </p>
+          )}
+          <ul className="notice-list">
+            {notices.data.items.map((n) => (
+              <li key={n.id} className={n.read_at ? 'read' : 'unread'}>
+                <button className="plain notice-open" disabled={work.busy} onClick={() => open(n)}>
+                  <strong>{n.title}</strong>
+                  {n.body && <span>{n.body}</span>}
+                  <small>
+                    {new Date(n.created_at).toLocaleString()}
+                    {n.emailed_at ? ' · emailed' : ''}
+                    {n.read_at ? '' : ' · new'}
+                  </small>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <section className="panel">
+        <h2>Email me about</h2>
+        <p className="muted">
+          Email is off unless you turn it on. Every email includes a link to stop all Agape emails.
+          See the <a href={`${import.meta.env.BASE_URL}privacy.html`}>privacy policy</a>.
+        </p>
+        <Feedback error={preferences.error} />
+        {preferences.data &&
+          kinds.map(([key, label]) => (
+            <label className="toggle" key={key}>
+              <input
+                type="checkbox"
+                checked={preferences.data![key]}
+                disabled={work.busy}
+                onChange={(e) => save({ ...preferences.data!, [key]: e.target.checked })}
+              />
+              {label}
+            </label>
+          ))}
+      </section>
+    </div>
+  )
+}
+
+// Random approved videos, one per creator, favouring works that have not yet been recognized.
+function DiscoverVideos({ node }: { node?: string }) {
+  const { revision } = useApp()
+  const [round, setRound] = useState(0)
+  const picks = useLoad(
+    () => result<Video[]>(db().rpc('discover_videos', { p_node: node || null, p_limit: 3 })),
+    [node, revision, round],
+  )
+  if (!picks.data?.length) return null
+  return (
+    <>
+      <div className="section-heading video-heading">
+        <div>
+          <div className="eyebrow">DISCOVER</div>
+          <h2>Something you might not have seen</h2>
+        </div>
+        <button className="plain" onClick={() => setRound((n) => n + 1)}>
+          Shuffle ↻
+        </button>
+      </div>
+      <div className="video-grid">
+        {picks.data.map((v) => (
+          <VideoCard key={v.video_id} video={v} topic={node} />
+        ))}
+      </div>
+    </>
+  )
+}
+
+type CreatorProfileData = {
+  user_id: string
+  channels: { channel_id: string; title: string; verified_at: string }[]
+  videos: (Video & { topics: { node_id: string; name: string }[] | null })[]
+  tvs: {
+    id: string
+    title: string
+    node_id: string | null
+    topic: string | null
+    latest_edition: { id: string; published_at: string } | null
+  }[]
+  ballot_results: {
+    ballot_id: string
+    ballot_title: string
+    kind: string
+    topic: string
+    closes_at: string
+    work_title: string
+    rank: number
+    points: number
+  }[]
+}
+
+function Creator() {
+  const { user } = useParams(),
+    { locale, revision } = useApp()
+  const profile = useLoad(
+    () =>
+      result<CreatorProfileData | null>(
+        db().rpc('creator_profile', { p_user: user, p_locale: locale }),
+      ),
+    [user, locale, revision],
+  )
+  if (profile.data === null)
+    return (
+      <Empty title="This creator has no public profile yet.">
+        <p>Profiles appear once a creator has an approved video.</p>
+        <Link to="/">Explore topics →</Link>
+      </Empty>
+    )
+  if (!profile.data) return <Loading error={profile.error} />
+  const p = profile.data
+  return (
+    <div className="page creator-page">
+      <div className="eyebrow">CREATOR</div>
+      <h1>{p.channels.map((c) => c.title).join(' · ') || 'Creator'}</h1>
+      <p className="muted">
+        {p.channels.map((c, i) => (
+          <span key={c.channel_id}>
+            {i > 0 && ' · '}
+            <a
+              href={`https://www.youtube.com/channel/${c.channel_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {c.title} on YouTube ↗
+            </a>
+          </span>
+        ))}
+      </p>
+      <div className="section-heading video-heading">
+        <h2>Approved videos</h2>
+        <span className="count">{p.videos.length}</span>
+      </div>
+      <div className="video-grid">
+        {p.videos.map((v) => (
+          <VideoCard key={v.video_id} video={v} topic={v.topics?.[0]?.node_id} />
+        ))}
+      </div>
+      {!!p.tvs.length && (
+        <>
+          <h2>Named TVs</h2>
+          <ul className="submission-list">
+            {p.tvs.map((t) => (
+              <li key={t.id}>
+                <Link to={`/tv/program/${t.id}`}>{t.title}</Link>{' '}
+                <small>
+                  {t.topic || 'All topics'}
+                  {t.latest_edition && ` · edition ${dateLabel(t.latest_edition.published_at)}`}
+                </small>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {!!p.ballot_results.length && (
+        <>
+          <h2>Ballot results</h2>
+          <ul className="submission-list">
+            {p.ballot_results.map((r) => (
+              <li key={`${r.ballot_id}-${r.work_title}`}>
+                <strong>#{r.rank}</strong> {r.work_title}{' '}
+                <small>
+                  in <Link to={`/ballot/${r.ballot_id}`}>{r.ballot_title}</Link> · {r.topic} ·{' '}
+                  {plural(r.points, 'point')}
+                </small>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -2151,7 +2434,13 @@ function Watch() {
       <div className="section-heading">
         <div>
           <h1 className="video-title">{data.video.title}</h1>
-          <p>{data.video.channel_title}</p>
+          <p>
+            {data.creator_id ? (
+              <Link to={`/creator/${data.creator_id}`}>{data.video.channel_title}</Link>
+            ) : (
+              data.video.channel_title
+            )}
+          </p>
         </div>
         <a
           className="text-link"
@@ -2367,7 +2656,10 @@ function Studio() {
     <div className="page">
       <div className="eyebrow">YOUR CORNER OF THE COMMUNITY</div>
       <h1>Creator studio.</h1>
-      <p className="muted">Share your work, find its place, and bring a moment to Agape TV.</p>
+      <p className="muted">
+        Share your work, find its place, and bring a moment to Agape TV.{' '}
+        <Link to={`/creator/${session.user.id}`}>View your public profile ↗</Link>
+      </p>
       <Feedback {...work} />
       <Feedback error={topics.error || mine.error || cues.error || submissions.error} />
       {nextMoments.length > 0 && (

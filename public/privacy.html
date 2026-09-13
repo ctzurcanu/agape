@@ -24,9 +24,8 @@
       <h2>Signing in</h2>
       <p>
         You sign in with your Google account through Supabase Auth. The sign-in service stores
-        your email address, name, profile picture and Google account identifier. This sign-in
-        service is shared with Allways, another application operated by the same operator;
-        Agape's own data is kept separately and is not combined with Allways data.
+        your email address, name, profile picture and Google account identifier. Agape's own
+        data is stored separately from the sign-in service.
       </p>
 
       <h2>YouTube data</h2>
@@ -78,6 +77,15 @@
           public.
         </li>
         <li>
+          Creators with at least one approved video have a public profile showing their verified
+          channel titles, approved videos and topics, named TVs, and their works' ranks on closed
+          ballots. Profiles never show email addresses.
+        </li>
+        <li>
+          Discovery sections pick approved videos at random on each visit. Agape does not record what
+          you watch to choose them.
+        </li>
+        <li>
           Pending or declined submissions are visible to you and to administrators. You see the
           reason for a decision, but not which administrator made it.
         </li>
@@ -87,6 +95,19 @@
           for auditing.
         </li>
       </ul>
+
+      <h2>Notices and emails</h2>
+      <p>
+        Agape records notices for you when an administrator decides on your video placement or topic
+        suggestion (with the reason), when a ballot opens in a topic where you can vote, when a ballot
+        you took part in closes, and when a fine is recorded on your voting budget. You see them under
+        Notices.
+      </p>
+      <p>
+        Email is off unless you turn it on, separately for each kind of notice. An email contains the
+        notice, a link to Agape, and a link to stop all Agape emails; Agape records whether each email
+        was sent or failed. Stopping emails does not remove your notices.
+      </p>
 
       <h2>Storage in your browser</h2>
       <p>
@@ -99,6 +120,10 @@
         <li><strong>Supabase</strong> hosts Agape's database, sign-in and verification function.</li>
         <li><strong>GitHub Pages</strong> serves the website.</li>
         <li>
+          <strong>Resend</strong> delivers the notice emails you choose to receive; it processes your
+          email address and the notice text.
+        </li>
+        <li>
           <strong>YouTube</strong> plays embedded videos. Google may set cookies and collect data
           when you play them, under the
           <a href="https://policies.google.com/privacy">Google Privacy Policy</a>.
@@ -110,14 +135,14 @@
         In the creator studio, <strong>Delete my Agape data</strong> removes your verified
         channels and videos (with their topic placements, moments, creator subtitles and the
         comments others left on them), your comments, topic suggestions, named TVs and their
-        editions, ballot recommendations, fines and administrator role. Work you shared with
+        editions, ballot recommendations, fines, notices, email preferences and administrator role.
+        Work you shared with
         others stays without your name: subtitle lines on shared excerpts, subtitle versions on
         other people's TVs, editions you published for them, review decisions and ballots you
         created.
       </p>
       <p>
-        The button does not delete your sign-in account, because it is shared with Allways. To
-        delete it as well, email
+        The button does not delete your sign-in account itself. To delete it as well, email
         <a href="mailto:christian.tzurcanu@gmail.com">christian.tzurcanu@gmail.com</a>; requests
         are handled within 30 days. You can also ask for a copy of your data or a correction by
         email.

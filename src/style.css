@@ -1911,3 +1911,24 @@ body:has(.tv-page) main {
   margin: 24px 0;
   border-color: #c9a6a6;
 }
+.notice-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.notice-open {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+.notice-list li.unread .notice-open {
+  border-left: 3px solid var(--line, #2f5d50);
+  font-weight: 500;
+}
+.notice-list li.read .notice-open {
+  opacity: 0.75;
+}

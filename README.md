@@ -209,4 +209,20 @@ creators to add a moment of the video to the topic's TV.
 person's channels and videos (with everything attached), comments, topic suggestions, named TVs
 and editions, ballot votes, fines, and administrator role, and removes their name from shared
 subtitles, editions, review decisions, and ballots. It never deletes the Supabase sign-in
-account, which is shared with Allways, and refuses to remove the only administrator.
+account, and refuses to remove the only administrator.
+
+### Notices, discovery, and creator profiles
+
+Review decisions (with reasons), ballots opening in a creator's eligible topics, closed-ballot
+results, and fines create in-app notices (`#/notifications`, with an unread count in the header).
+Email is opt-in per kind. The `agape-send-notifications` Edge Function, called every 15 minutes by
+the `Send Agape notices` workflow, queues closed-ballot notices and emails opted-in notices through
+Resend; every email carries a link to `unsubscribe.html` and a one-click `List-Unsubscribe` header
+handled by `agape-unsubscribe`. Without email configuration, notices stay in the app.
+
+Topic and home pages show three random approved videos under **Discover**, at most one per creator,
+preferring videos that have not been recommended on a closed ballot.
+
+`#/creator/<user>` is a public creator profile (verified channel titles, approved videos and topics,
+named TVs, and closed-ballot ranks). It exists only while the creator has an approved placement and
+never shows email or sign-in data. The Watch page links a video's channel to its creator.

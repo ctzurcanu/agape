@@ -7,3 +7,11 @@ schemas = ["public", "agape"]
 # The handler validates every Supabase bearer token with auth.getUser().
 # Supports projects using asymmetric signing keys as well as legacy JWTs.
 verify_jwt = false
+
+[functions.agape-send-notifications]
+# Called by the scheduled workflow; the handler requires the AGAPE_CRON_SECRET header.
+verify_jwt = false
+
+[functions.agape-unsubscribe]
+# Opened from emails without a session; the unsubscribe token is the credential.
+verify_jwt = false

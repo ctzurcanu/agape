@@ -53,6 +53,8 @@ insert into agape.voting_fine(id,user_id,reason,imposed_by) values
 insert into agape.moderation_decision(kind,video_id,node_id,decision,decided_by) values('video','deletevidy1','b0000000-0000-4000-8000-000000000010','approved','b0000000-0000-4000-8000-000000000001');
 insert into agape.verification_budget(user_id) values('b0000000-0000-4000-8000-000000000001');
 insert into agape.voting_budget_config(a,b,c,z,effective_at,created_by) values(3,1,0.25,1,now()+interval '100 years','b0000000-0000-4000-8000-000000000001');
+insert into agape.notification(user_id,kind,title) values('b0000000-0000-4000-8000-000000000001','review','Leaving notice');
+insert into agape.notification_preference(user_id,email_review) values('b0000000-0000-4000-8000-000000000001',true);
 
 set local role anon;
 do $$ begin

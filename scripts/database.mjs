@@ -137,7 +137,19 @@ try {
     } finally {
       await client.query('rollback')
     }
-    console.log('Passed: self-serve deletion keeps shared accounts and others’ work.')
+    console.log('Passed: self-serve deletion keeps sign-in accounts and others’ work.')
+    for (const [file, label] of [
+      ['tests/discovery_profiles.sql', 'discovery slots and creator profiles'],
+      ['tests/notifications.sql', 'notices, email preferences, delivery claims, and unsubscribe'],
+    ]) {
+      await client.query('begin')
+      try {
+        await client.query(await readFile(file, 'utf8'))
+      } finally {
+        await client.query('rollback')
+      }
+      console.log(`Passed: ${label}.`)
+    }
     console.log(
       'Passed: ontology isolation, RLS, subtree eligibility, ownership, moderation, timing, cycles, and localized navigation.',
     )

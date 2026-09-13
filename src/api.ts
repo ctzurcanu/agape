@@ -81,6 +81,7 @@ export interface Browse {
 }
 export interface VideoDetail {
   video: Video | null
+  creator_id: string | null
   topics: Topic[]
   cues: Cue[]
   comments: { id: string; user_id: string; body: string; author: string; created_at: string }[]

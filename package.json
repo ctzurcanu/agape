@@ -11,7 +11,7 @@
     "build": "tsc -b && vite build && node scripts/check-build.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
-    "test:edge": "deno test --allow-env --config supabase/functions/agape-verify-video/deno.json supabase/functions/agape-verify-video/handler_test.ts",
+    "test:edge": "deno test --allow-env --config supabase/functions/agape-verify-video/deno.json supabase/functions/agape-verify-video/handler_test.ts && deno test --allow-env --config supabase/functions/agape-send-notifications/deno.json supabase/functions/agape-send-notifications/handler_test.ts && deno test --allow-env --config supabase/functions/agape-unsubscribe/deno.json supabase/functions/agape-unsubscribe/handler_test.ts",
     "db:check": "node scripts/database.mjs check",
     "db:migrate": "node scripts/database.mjs migrate",
     "db:test": "node scripts/database.mjs test",

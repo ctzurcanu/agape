@@ -1,0 +1,32 @@
+name: Send Agape notices
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: agape-notices
+  cancel-in-progress: false
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deliver pending email notices
+        env:
+          AGAPE_CRON_SECRET: ${{ secrets.AGAPE_CRON_SECRET }}
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+        run: |
+          if [ -z "$AGAPE_CRON_SECRET" ]; then
+            echo "AGAPE_CRON_SECRET is not set; email delivery is not enabled."
+            exit 0
+          fi
+          status=$(curl --silent --show-error --output response.json --write-out '%{http_code}' \
+            -X POST -H "x-agape-cron: $AGAPE_CRON_SECRET" -H 'Content-Type: application/json' -d '{}' \
+            "$SUPABASE_URL/functions/v1/agape-send-notifications")
+          cat response.json; echo
+          if [ "$status" = "503" ]; then
+            echo "Email delivery is not configured yet; closed-ballot notices were still queued."
+            exit 0
+          fi
+          test "$status" = "200"

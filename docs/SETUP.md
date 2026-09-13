@@ -85,6 +85,34 @@ The Google access token is used transiently for channel verification; no Google
 refresh-token store or background access is implemented. Reconnect Google when
 the provider token expires or is unavailable.
 
+## Notices and email
+
+In-app notices need no setup. Email delivery is optional:
+
+1. Create a Resend account and verify a sending domain you own (a `github.io`
+   address cannot send email).
+2. Set the function secrets. They are prefixed with `AGAPE_` because function
+   secrets apply to the whole Supabase project:
+
+   ```sh
+   supabase secrets set --project-ref yajenrxydqzljmbaoeyl \
+     AGAPE_RESEND_API_KEY=... AGAPE_EMAIL_FROM='Agape <notices@your-domain>' \
+     AGAPE_SITE_URL=https://ctzurcanu.github.io/agape/ AGAPE_CRON_SECRET=...
+   ```
+
+   Use a long random value for `AGAPE_CRON_SECRET`.
+3. Deploy both functions by name:
+
+   ```sh
+   supabase functions deploy agape-send-notifications --project-ref yajenrxydqzljmbaoeyl --use-api
+   supabase functions deploy agape-unsubscribe --project-ref yajenrxydqzljmbaoeyl --use-api
+   ```
+
+4. Add the same `AGAPE_CRON_SECRET` as a GitHub Actions repository secret. The
+   **Send Agape notices** workflow calls delivery every 15 minutes (and can be run
+   manually). Until email is configured it reports that and exits successfully;
+   closed-ballot notices are still created.
+
 ## Deploy verification
 
 The function has been deployed to the shared project. To deploy future updates:
